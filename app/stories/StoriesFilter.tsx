@@ -5,7 +5,7 @@ import Link from 'next/link'
 import Image from 'next/image'
 import { Search, MapPin, ArrowRight, X } from 'lucide-react'
 import type { Story, StoryCategory, CountryStats } from '@/types'
-import { CATEGORY_LABELS, CATEGORY_COLORS, formatDate, cn } from '@/lib/utils'
+import { CATEGORY_LABELS, CATEGORY_COLORS } from '@/lib/utils'
 import { CategoryBadge } from '@/components/ui/CategoryBadge'
 
 const CATEGORIES = ['energy_transition', 'nature_land', 'built_human', 'extreme_weather'] as const
@@ -15,7 +15,7 @@ interface Props {
   countryStats: CountryStats[]
   initialCategory?: StoryCategory
   initialCountry?: string
-  initialTag?: string
+  initialTag?: string // eslint-disable-line
 }
 
 export function StoriesFilter({ stories, countryStats, initialCategory, initialCountry, initialTag }: Props) {

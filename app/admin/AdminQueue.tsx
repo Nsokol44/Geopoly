@@ -1,7 +1,7 @@
 'use client'
 // app/admin/AdminQueue.tsx
 import { useState } from 'react'
-import { CheckCircle, XCircle, Eye, Star, StarOff, MapPin, ChevronDown, ChevronUp } from 'lucide-react'
+import { CheckCircle, XCircle, Eye, Star, MapPin, ChevronDown, ChevronUp } from 'lucide-react'
 import type { Story, StoryCategory } from '@/types'
 import { CATEGORY_LABELS, CATEGORY_COLORS, formatDate } from '@/lib/utils'
 
@@ -92,7 +92,8 @@ export function AdminQueue({ stories: initialStories }: Props) {
               <div className="px-5 pb-5 border-t border-ink-800 pt-4">
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-4">
                   {story.cover_image_url && (
-                    <img src={story.cover_image_url} alt="Cover" className="w-full h-40 object-cover rounded-sm" />
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img src={story.cover_image_url} alt="Cover" className="w-full h-40 object-cover rounded-sm" />
                   )}
                   <div className="text-sm space-y-2 text-ink-400">
                     <p><span className="text-ink-500">Coords:</span> {story.latitude.toFixed(4)}, {story.longitude.toFixed(4)}</p>

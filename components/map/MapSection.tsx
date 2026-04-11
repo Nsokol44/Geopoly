@@ -4,14 +4,14 @@
 // Mirrors the Geopoly WordPress theme approach exactly — no npm imports of L.
 
 import { useRef, useEffect, useState, useCallback } from 'react'
-import type { MapStory, CountryStats, StoryCategory } from '@/types'
+import type { MapStory, StoryCategory } from '@/types'
 import { CATEGORY_COLORS } from '@/lib/utils'
 import { MapControls } from './MapControls'
 import { MapPopup } from './MapPopup'
 
 interface Props {
   stories: MapStory[]
-  countryStats: CountryStats[]
+  countryStats?: CountryStats[]
 }
 
 type ViewMode = 'points' | 'heatmap'
@@ -181,7 +181,7 @@ export function MapSection({ stories, countryStats }: Props) {
     const cluster = clusterRef.current
     cluster.clearLayers()
 
-    filteredStories.forEach((story, i) => {
+    filteredStories.forEach((story) => {
       const color = CATEGORY_COLORS[story.category as StoryCategory] ?? '#0b90e4'
       const icon = L.divIcon({
         html: `<div class="cs-wrap" style="--mc:${color}">

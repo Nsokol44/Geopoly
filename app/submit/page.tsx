@@ -1,3 +1,4 @@
+import Link from 'next/link'
 'use client'
 // app/submit/page.tsx
 import { useState, useCallback, useRef } from 'react'
@@ -534,9 +535,9 @@ function SuccessScreen() {
           <h1 className="font-display text-3xl text-ink-50 mb-4">Story Submitted</h1>
           <p className="text-ink-400 leading-relaxed mb-8">
             Thank you. Your story has entered our editorial review queue.
-            We'll be in touch via email within 5–10 business days.
+            We&apos;ll be in touch via email within 5–10 business days.
           </p>
-          <a href="/" className="inline-block bg-brand-500 hover:bg-brand-400 text-white font-semibold font-mono text-xs uppercase tracking-wider px-8 py-3 transition-colors">
+          <Link href="/" className="inline-block bg-brand-500 hover:bg-brand-400 text-white font-semibold font-mono text-xs uppercase tracking-wider px-8 py-3 transition-colors">
             Back to the Map
           </a>
         </div>

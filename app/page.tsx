@@ -63,7 +63,7 @@ export default async function HomePage() {
               style={{ fontSize: 'clamp(0.875rem, 1.2vw, 1.05rem)' }}>
               {totalStories > 0
                 ? `${totalStories.toLocaleString()} stories from ${totalCountries} countries. Click any light to read.`
-                : 'Real voices from communities navigating a warming world. Click any light to read.'}
+                : 'Real voices from communities navigating a warming world. Click any light to read.&#39;}
             </p>
           </div>
         </div>

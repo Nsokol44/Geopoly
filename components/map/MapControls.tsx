@@ -1,6 +1,6 @@
 'use client'
 // components/map/MapControls.tsx
-import { Layers, MapPin, Flame, Locate, Loader2 } from 'lucide-react'
+import { MapPin, Flame, Locate, Loader2 } from 'lucide-react'
 import type { StoryCategory } from '@/types'
 import { CATEGORY_COLORS, CATEGORY_LABELS, cn } from '@/lib/utils'
 

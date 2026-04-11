@@ -81,7 +81,7 @@ function PullQuote({ text, color }: { text: string; color: string }) {
         className="font-display absolute -top-4 -left-2 text-8xl leading-none select-none pointer-events-none opacity-20"
         style={{ color }}
       >
-        "
+        &ldquo;
       </div>
       <p
         className="font-display italic relative z-10 pl-6"

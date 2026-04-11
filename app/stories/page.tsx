@@ -1,15 +1,9 @@
 // app/stories/page.tsx
 import { Suspense } from 'react'
-import Link from 'next/link'
-import Image from 'next/image'
-import { MapPin, ArrowRight } from 'lucide-react'
 import { getRecentStories, getCountryStats } from '@/lib/queries'
 import { SiteHeader } from '@/components/ui/SiteHeader'
 import { SiteFooter } from '@/components/ui/SiteFooter'
-import { CategoryBadge } from '@/components/ui/CategoryBadge'
 import { StoriesFilter } from './StoriesFilter'
-import { formatDate } from '@/lib/utils'
-import type { Story, StoryCategory } from '@/types'
 
 export const revalidate = 300
 

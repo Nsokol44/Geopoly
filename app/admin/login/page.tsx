@@ -1,6 +1,7 @@
 'use client'
 // app/admin/login/page.tsx
 import { useState } from 'react'
+import Link from 'next/link'
 import { createClient } from '@/lib/supabase'
 import { Loader2, Mail, CheckCircle, AlertCircle } from 'lucide-react'
 
@@ -8,14 +9,14 @@ type State = 'idle' | 'loading' | 'sent' | 'error'
 
 export default function AdminLoginPage() {
   const [email, setEmail]   = useState('')
-  const [state, setState]   = useState<State>('idle')
-  const [errMsg, setErrMsg] = useState('')
+  const [state, setState]   = useState<State>(&apos;idle&apos;)
+  const [errMsg, setErrMsg] = useState(&apos;&apos;)
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     if (!email.trim()) return
-    setState('loading')
-    setErrMsg('')
+    setState(&apos;loading&apos;)
+    setErrMsg(&apos;&apos;)
 
     const supabase = createClient()
     const { error } = await supabase.auth.signInWithOtp({
@@ -25,9 +26,9 @@ export default function AdminLoginPage() {
 
     if (error) {
       setErrMsg(error.message)
-      setState('error')
+      setState(&apos;error&apos;)
     } else {
-      setState('sent')
+      setState(&apos;sent&apos;)
     }
   }
 
@@ -64,7 +65,7 @@ export default function AdminLoginPage() {
           <div className="h-0.5 bg-gradient-to-r from-brand-700 via-brand-400 to-brand-700" />
 
           <div className="p-8">
-            {state === 'sent' ? (
+            {state === &apos;sent&apos; ? (
               /* ── Success state ───────────────────── */
               <div className="text-center py-4">
                 <div className="w-14 h-14 rounded-full bg-nature-950 border border-nature-800 flex items-center justify-center mx-auto mb-5">
@@ -72,12 +73,12 @@ export default function AdminLoginPage() {
                 </div>
                 <h2 className="font-display text-xl text-ink-50 mb-3">Check your inbox</h2>
                 <p className="text-ink-400 text-sm leading-relaxed">
-                  We sent a magic link to{' '}
+                  We sent a magic link to{&apos; &apos;}
                   <span className="text-ink-200 font-medium">{email}</span>.
                   Click it to sign in — it expires in 1 hour.
                 </p>
                 <button
-                  onClick={() => { setState('idle'); setEmail('') }}
+                  onClick={() => { setState(&apos;idle&apos;); setEmail(&apos;&apos;) }}
                   className="mt-6 text-xs font-mono text-ink-500 hover:text-ink-300 transition-colors tracking-wider uppercase"
                 >
                   Use a different email
@@ -89,7 +90,7 @@ export default function AdminLoginPage() {
                 <div className="mb-7">
                   <h1 className="font-display text-2xl text-ink-50 mb-1">Sign in</h1>
                   <p className="text-ink-500 text-sm">
-                    Admin access only. We'll send a magic link to your email.
+                    Admin access only. We&apos;ll send a magic link to your email.
                   </p>
                 </div>
 
@@ -116,10 +117,10 @@ export default function AdminLoginPage() {
                   </div>
 
                   {/* Error message */}
-                  {state === 'error' && (
+                  {state === &apos;error&apos; && (
                     <div className="flex items-start gap-2 text-red-400 bg-red-950/30 border border-red-900/50 rounded-sm px-4 py-3 text-xs">
                       <AlertCircle size={13} className="flex-shrink-0 mt-0.5" />
-                      {errMsg || 'Something went wrong. Please try again.'}
+                      {errMsg || &apos;Something went wrong. Please try again.&apos;}
                     </div>
                   )}
 
@@ -128,8 +129,8 @@ export default function AdminLoginPage() {
                     disabled={state === 'loading' || !email.trim()}
                     className="w-full flex items-center justify-center gap-2 bg-brand-500 hover:bg-brand-400 disabled:opacity-50 disabled:cursor-not-allowed text-white font-semibold font-mono text-xs tracking-[0.2em] uppercase py-3 transition-colors rounded-sm"
                   >
-                    {state === 'loading' && <Loader2 size={13} className="animate-spin" />}
-                    {state === 'loading' ? 'Sending…' : 'Send Magic Link'}
+                    {state === &apos;loading&apos; && <Loader2 size={13} className="animate-spin" />}
+                    {state === &apos;loading&apos; ? &apos;Sending…&apos; : &apos;Send Magic Link&apos;}
                   </button>
                 </form>
 
@@ -143,12 +144,12 @@ export default function AdminLoginPage() {
 
         {/* Back to site link */}
         <div className="mt-6 text-center">
-          <a
+          <Link
             href="/"
             className="text-xs font-mono text-ink-600 hover:text-ink-400 transition-colors tracking-wider uppercase"
           >
             ← Back to site
-          </a>
+          </Link>
         </div>
       </div>
     </div>
