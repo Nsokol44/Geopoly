@@ -117,8 +117,9 @@ export async function updateStoryStatus(
   featured = false
 ): Promise<boolean> {
   const supabase = await createServerSupabaseClient()
-  const { error } = await supabase
-    .from('stories' as any)
+  const db = supabase as any
+  const { error } = await db
+    .from('stories')
     .update({ status, featured })
     .eq('id', id)
 
