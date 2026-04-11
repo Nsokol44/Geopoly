@@ -1,4 +1,5 @@
 // app/stories/page.tsx
+import type { StoryCategory } from '@/types'
 import { Suspense } from 'react'
 import { getRecentStories, getCountryStats } from '@/lib/queries'
 import { SiteHeader } from '@/components/ui/SiteHeader'
@@ -53,7 +54,6 @@ export default async function StoriesPage({ searchParams }: Props) {
               countryStats={countryStats}
               initialCategory={params.category as StoryCategory}
               initialCountry={params.country}
-              initialTag={params.tag}
             />
           </Suspense>
         </div>

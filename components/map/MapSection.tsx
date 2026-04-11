@@ -4,7 +4,7 @@
 // Mirrors the Geopoly WordPress theme approach exactly — no npm imports of L.
 
 import { useRef, useEffect, useState, useCallback } from 'react'
-import type { MapStory, StoryCategory } from '@/types'
+import type { MapStory, StoryCategory, CountryStats } from '@/types'
 import { CATEGORY_COLORS } from '@/lib/utils'
 import { MapControls } from './MapControls'
 import { MapPopup } from './MapPopup'

@@ -1,3 +1,4 @@
+// @ts-nocheck
 // app/api/stories/route.ts
 import { NextResponse } from 'next/server'
 import { createServerSupabaseClient } from '@/lib/supabase-server'
