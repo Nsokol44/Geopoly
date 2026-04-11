@@ -15,10 +15,9 @@ interface Props {
   countryStats: CountryStats[]
   initialCategory?: StoryCategory
   initialCountry?: string
-  initialTag?: string // eslint-disable-line
 }
 
-export function StoriesFilter({ stories, countryStats, initialCategory, initialCountry, initialTag }: Props) {
+export function StoriesFilter({ stories, countryStats, initialCategory, initialCountry }: Props) {
   const [search, setSearch] = useState('')
   const [category, setCategory] = useState<StoryCategory | ''>( initialCategory || '')
   const [country, setCountry] = useState(initialCountry || '')

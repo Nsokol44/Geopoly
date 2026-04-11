@@ -1,6 +1,6 @@
 'use client'
 // app/submit/page.tsx
-import { useState, useCallback, useRef } from 'react'
+import { useState, useCallback } from 'react'
 import { useDropzone } from 'react-dropzone'
 import { MapPin, Upload, Link2, CheckCircle, Loader2, AlertCircle } from 'lucide-react'
 import { createClient } from '@/lib/supabase'
@@ -8,6 +8,7 @@ import { reverseGeocode, CATEGORY_LABELS, cn } from '@/lib/utils'
 import { SiteHeader } from '@/components/ui/SiteHeader'
 import { SiteFooter } from '@/components/ui/SiteFooter'
 import type { StoryCategory, StorySubmission } from '@/types'
+import Link from 'next/link'
 import dynamic from 'next/dynamic'
 
 // Load the location picker map only on client
