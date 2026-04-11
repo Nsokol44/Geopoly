@@ -1,0 +1,37 @@
+{
+  "name": "climate-stories",
+  "version": "0.1.0",
+  "private": true,
+  "scripts": {
+    "dev": "next dev",
+    "build": "next build",
+    "start": "next start",
+    "lint": "next lint"
+  },
+  "dependencies": {
+    "@supabase/ssr": "^0.5.1",
+    "@supabase/supabase-js": "^2.45.4",
+    "next": "14.2.15",
+    "react": "^18",
+    "react-dom": "^18",
+    "lucide-react": "^0.453.0",
+    "clsx": "^2.1.1",
+    "framer-motion": "^11.11.9",
+    "react-dropzone": "^14.2.10",
+    "@radix-ui/react-select": "^2.1.2",
+    "@radix-ui/react-dialog": "^1.1.2",
+    "@radix-ui/react-toast": "^1.2.2",
+    "date-fns": "^4.1.0"
+  },
+  "devDependencies": {
+    "@types/node": "^20",
+    "@types/react": "^18",
+    "@types/react-dom": "^18",
+    "typescript": "^5",
+    "eslint": "^8",
+    "eslint-config-next": "14.2.15",
+    "tailwindcss": "^3.4.14",
+    "postcss": "^8",
+    "autoprefixer": "^10"
+  }
+}
