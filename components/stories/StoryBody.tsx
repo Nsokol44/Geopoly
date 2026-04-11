@@ -102,7 +102,6 @@ function PullQuote({ text, color }: { text: string; color: string }) {
 function BreakoutImage({ url, caption }: { url: string; caption: string }) {
   return (
     <figure className="my-12 -mx-6 lg:-mx-16">
-      {/* eslint-disable-next-line @next/next/no-img-element */}
       <img
         src={url}
         alt={caption}

@@ -11,7 +11,7 @@ import { MapPopup } from './MapPopup'
 
 interface Props {
   stories: MapStory[]
-  countryStats?: CountryStats[] // eslint-disable-line
+  countryStats?: CountryStats[]
 }
 
 type ViewMode = 'points' | 'heatmap'

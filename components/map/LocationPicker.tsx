@@ -52,7 +52,6 @@ export default function LocationPicker({ lat, lng, onPick }: Props) {
       mapRef.current = map
     })
     return () => { mapRef.current?.remove(); mapRef.current = null; markerRef.current = null }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
   useEffect(() => {

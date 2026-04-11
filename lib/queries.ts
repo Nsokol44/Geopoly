@@ -118,8 +118,8 @@ export async function updateStoryStatus(
 ): Promise<boolean> {
   const supabase = await createServerSupabaseClient()
   const { error } = await supabase
-    .from('stories')
-    .update({ status, featured } as any)
+    .from('stories' as any)
+    .update({ status, featured })
     .eq('id', id)
 
   if (error) { console.error('updateStoryStatus:', error); return false }
