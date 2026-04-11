@@ -119,7 +119,7 @@ export async function updateStoryStatus(
   const supabase = await createServerSupabaseClient()
   const { error } = await supabase
     .from('stories')
-    .update({ status, featured })
+    .update({ status, featured } as any)
     .eq('id', id)
 
   if (error) { console.error('updateStoryStatus:', error); return false }

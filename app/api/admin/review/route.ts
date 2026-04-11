@@ -30,12 +30,15 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: 'Invalid payload' }, { status: 400 })
     }
 
+    // Cast to any to avoid overly strict Supabase generated types
+    const payload: any = {
+      status: status as 'approved' | 'rejected',
+      featured: status === 'approved' ? Boolean(featured) : false,
+    }
+
     const { error } = await supabase
       .from('stories')
-      .update({
-        status,
-        featured: status === 'approved' ? (featured ?? false) : false,
-      })
+      .update(payload)
       .eq('id', id)
 
     if (error) {
