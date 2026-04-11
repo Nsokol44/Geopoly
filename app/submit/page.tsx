@@ -1,4 +1,3 @@
-import Link from 'next/link'
 'use client'
 // app/submit/page.tsx
 import { useState, useCallback, useRef } from 'react'
