@@ -1,87 +1,258 @@
 'use client'
-// app/submit/page.tsx
-import { useState, useCallback } from 'react'
-import { useDropzone } from 'react-dropzone'
-import { MapPin, Upload, Link2, CheckCircle, Loader2, AlertCircle } from 'lucide-react'
+// app/submit/page.tsx  — Elder-friendly voice submission
+// Replace your existing app/submit/page.tsx with this file.
+
+import { useState, useRef, useCallback } from 'react'
+import { Mic, MicOff, MapPin, Upload, CheckCircle, Loader2, AlertCircle, X } from 'lucide-react'
 import { createClient } from '@/lib/supabase'
-import { reverseGeocode, CATEGORY_LABELS, cn } from '@/lib/utils'
+import { reverseGeocode } from '@/lib/utils'
 import { SiteHeader } from '@/components/ui/SiteHeader'
 import { SiteFooter } from '@/components/ui/SiteFooter'
-import type { StoryCategory, StorySubmission } from '@/types'
 import Link from 'next/link'
-import dynamic from 'next/dynamic'
 
-// Load the location picker map only on client
-const LocationPicker = dynamic(() => import('@/components/map/LocationPicker'), { ssr: false })
+// ─── Types ───────────────────────────────────────────────────
+type Stage = 'record' | 'details' | 'submitting' | 'success' | 'error'
 
-type Step = 'story' | 'media' | 'location' | 'author' | 'review'
-const STEPS: Step[] = ['story', 'media', 'location', 'author', 'review']
-const STEP_LABELS: Record<Step, string> = {
-  story: 'Your Story',
-  media: 'Media',
-  location: 'Location',
-  author: 'About You',
-  review: 'Review & Submit',
-}
-
-const CATEGORIES = ['energy_transition', 'nature_land', 'built_human', 'extreme_weather'] as const
-
-interface FormData {
-  title: string
-  excerpt: string
-  body: string
-  category: StoryCategory | ''
-  tags: string
-  cover_image_file: File | null
-  cover_image_preview: string | null
-  video_url: string
-  video_file: File | null
+interface VoiceForm {
+  audioBlob: Blob | null
+  audioUrl: string | null
+  audioDuration: number
+  author_name: string
+  author_email: string
+  age_range: string
   latitude: number | null
   longitude: number | null
   location_name: string
   country_code: string
   country_name: string
-  author_name: string
-  author_email: string
-  author_bio: string
+  cover_image_file: File | null
+  cover_image_preview: string | null
+  video_file: File | null
 }
 
-const EMPTY_FORM: FormData = {
-  title: '', excerpt: '', body: '', category: '', tags: '',
-  cover_image_file: null, cover_image_preview: null,
-  video_url: '', video_file: null,
+const EMPTY: VoiceForm = {
+  audioBlob: null, audioUrl: null, audioDuration: 0,
+  author_name: '', author_email: '', age_range: '',
   latitude: null, longitude: null,
   location_name: '', country_code: '', country_name: '',
-  author_name: '', author_email: '', author_bio: '',
+  cover_image_file: null, cover_image_preview: null,
+  video_file: null,
 }
 
+const AGE_RANGES = ['Under 18', '18–24', '25–34', '35–44', '45–54', '55–64', '65–74', '75 or older', 'Prefer not to say']
+
+// ─── Main Component ───────────────────────────────────────────
 export default function SubmitPage() {
-  const [step, setStep] = useState<Step>('story')
-  const [form, setForm] = useState<FormData>(EMPTY_FORM)
-  const [submitting, setSubmitting] = useState(false)
-  const [submitted, setSubmitted] = useState(false)
-  const [error, setError] = useState<string | null>(null)
+  const [stage, setStage] = useState<Stage>('record')
+  const [form, setForm] = useState<VoiceForm>(EMPTY)
+  const [errorMsg, setErrorMsg] = useState('')
 
-  const currentIndex = STEPS.indexOf(step)
+  const update = (p: Partial<VoiceForm>) => setForm(f => ({ ...f, ...p }))
 
-  const update = (partial: Partial<FormData>) =>
-    setForm(f => ({ ...f, ...partial }))
+  if (stage === 'success') return <SuccessScreen />
 
-  // Cover image drop
-  const onDrop = useCallback((files: File[]) => {
-    const file = files[0]
-    if (!file) return
-    const preview = URL.createObjectURL(file)
-    update({ cover_image_file: file, cover_image_preview: preview })
-  }, [])
-  const { getRootProps, getInputProps, isDragActive } = useDropzone({
-    onDrop, accept: { 'image/*': [] }, maxSize: 10 * 1024 * 1024, maxFiles: 1,
-  })
+  return (
+    <div className="min-h-screen bg-ink-950 flex flex-col">
+      <SiteHeader />
+      <main className="flex-1 pt-16">
+        <div className="max-w-lg mx-auto px-5 py-12">
 
-  // Geolocation
+          {/* Header */}
+          <div className="mb-8 text-center">
+            <h1 className="font-display text-3xl text-ink-50 mb-2">Share Your Story</h1>
+          </div>
+
+          {/* Step indicator — simple 2-step */}
+          <div className="flex items-center justify-center gap-3 mb-8">
+            {(['record', 'details'] as const).map((s, i) => (
+              <div key={s} className="flex items-center gap-3">
+                <div className={`w-9 h-9 rounded-full flex items-center justify-center text-sm font-bold font-mono transition-colors
+                  ${stage === s ? 'bg-brand-500 text-white' :
+                    (stage === 'details' && i === 0) || stage === 'submitting' ? 'bg-brand-800 text-brand-300' :
+                    'bg-ink-800 text-ink-500'}`}>
+                  {(stage === 'details' && i === 0) || stage === 'submitting' ? '✓' : i + 1}
+                </div>
+                <span className={`text-xs font-mono uppercase tracking-wider ${stage === s ? 'text-ink-200' : 'text-ink-600'}`}>
+                  {s === 'record' ? 'Record' : 'Details'}
+                </span>
+                {i === 0 && <div className="w-8 h-px bg-ink-700" />}
+              </div>
+            ))}
+          </div>
+
+          {/* Card */}
+          <div className="bg-ink-900 border border-ink-800 rounded-lg p-6 md:p-8">
+            {stage === 'record' && (
+              <StageRecord form={form} update={update} onNext={() => setStage('details')} />
+            )}
+            {(stage === 'details' || stage === 'submitting') && (
+              <StageDetails
+                form={form}
+                update={update}
+                submitting={stage === 'submitting'}
+                errorMsg={errorMsg}
+                onBack={() => setStage('record')}
+                onSubmit={async () => {
+                  setStage('submitting')
+                  setErrorMsg('')
+                  const err = await handleSubmit(form)
+                  if (err) { setErrorMsg(err); setStage('details') }
+                  else setStage('success')
+                }}
+              />
+            )}
+          </div>
+        </div>
+      </main>
+      <SiteFooter />
+    </div>
+  )
+}
+
+// ─── Stage 1: Record ──────────────────────────────────────────
+function StageRecord({ form, update, onNext }: {
+  form: VoiceForm
+  update: (p: Partial<VoiceForm>) => void
+  onNext: () => void
+}) {
+  const [recording, setRecording] = useState(false)
+  const [seconds, setSeconds] = useState(0)
+  const mediaRef = useRef<MediaRecorder | null>(null)
+  const chunksRef = useRef<Blob[]>([])
+  const timerRef = useRef<ReturnType<typeof setInterval> | null>(null)
+
+  const startRecording = async () => {
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true })
+      const mr = new MediaRecorder(stream)
+      chunksRef.current = []
+      mr.ondataavailable = e => { if (e.data.size > 0) chunksRef.current.push(e.data) }
+      mr.onstop = () => {
+        const blob = new Blob(chunksRef.current, { type: 'audio/webm' })
+        update({ audioBlob: blob, audioUrl: URL.createObjectURL(blob), audioDuration: seconds })
+        stream.getTracks().forEach(t => t.stop())
+      }
+      mr.start()
+      mediaRef.current = mr
+      setRecording(true)
+      setSeconds(0)
+      timerRef.current = setInterval(() => setSeconds(s => s + 1), 1000)
+    } catch {
+      alert('Microphone access denied. Please allow microphone and try again.')
+    }
+  }
+
+  const stopRecording = () => {
+    mediaRef.current?.stop()
+    if (timerRef.current) clearInterval(timerRef.current)
+    setRecording(false)
+  }
+
+  const clearRecording = () => {
+    update({ audioBlob: null, audioUrl: null, audioDuration: 0 })
+    setSeconds(0)
+  }
+
+  const fmt = (s: number) => `${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')}`
+
+  return (
+    <div className="text-center">
+      <h2 className="font-display text-3xl text-ink-50 mb-3">Step 1: Record Your Story</h2>
+      <p className="text-ink-300 text-base mb-2 leading-relaxed">
+        Press the big button below and speak your story out loud.
+      </p>
+      <p className="text-ink-400 text-sm mb-8 leading-relaxed">
+        Tell us what you have seen or experienced with climate change in your community.
+        Speak as long as you need — there is no time limit.
+      </p>
+
+      {/* Big mic button */}
+      {!form.audioUrl ? (
+        <div className="flex flex-col items-center gap-6">
+          <button
+            onClick={recording ? stopRecording : startRecording}
+            className={`w-40 h-40 rounded-full flex flex-col items-center justify-center gap-3 transition-all shadow-xl
+              ${recording
+                ? 'bg-red-600 hover:bg-red-500 animate-pulse scale-110'
+                : 'bg-brand-600 hover:bg-brand-500 active:scale-95'
+              }`}
+          >
+            {recording
+              ? <MicOff size={48} className="text-white" />
+              : <Mic size={48} className="text-white" />
+            }
+            <span className="text-white text-sm font-bold uppercase tracking-wider">
+              {recording ? 'Tap to Stop' : 'Tap to Record'}
+            </span>
+          </button>
+
+          {recording && (
+            <div className="flex flex-col items-center gap-1">
+              <div className="flex items-center gap-2">
+                <div className="w-3 h-3 rounded-full bg-red-500 animate-pulse" />
+                <span className="text-red-400 text-base font-bold">Recording…</span>
+              </div>
+              <span className="font-mono text-red-300 text-2xl tabular-nums">{fmt(seconds)}</span>
+              <p className="text-ink-500 text-sm mt-1">Tap the button again when you are done speaking.</p>
+            </div>
+          )}
+
+          {!recording && (
+            <p className="text-ink-400 text-base">👆 Tap the button to begin speaking</p>
+          )}
+        </div>
+      ) : (
+        /* Playback + controls */
+        <div className="flex flex-col items-center gap-5">
+          <div className="w-20 h-20 rounded-full bg-nature-900 border-2 border-nature-600 flex items-center justify-center">
+            <Mic size={36} className="text-nature-400" />
+          </div>
+          <p className="text-nature-400 text-base font-bold">
+            ✅ Your recording is saved! ({fmt(form.audioDuration)})
+          </p>
+          <p className="text-ink-400 text-sm">Press play below to hear your recording.</p>
+          <audio controls src={form.audioUrl} className="w-full max-w-xs rounded-lg" />
+          <button
+            onClick={clearRecording}
+            className="flex items-center gap-2 text-ink-400 hover:text-ink-200 text-sm transition-colors border border-ink-700 hover:border-ink-500 rounded-lg px-5 py-2.5 mt-1"
+          >
+            <X size={14} /> Not happy with it? Record again
+          </button>
+        </div>
+      )}
+
+      {/* Next button */}
+      <div className="mt-8 pt-6 border-t border-ink-800">
+        <button
+          onClick={onNext}
+          disabled={!form.audioUrl}
+          className="w-full bg-brand-600 hover:bg-brand-500 disabled:opacity-40 disabled:cursor-not-allowed text-white font-bold text-lg py-5 rounded-lg transition-colors"
+        >
+          Next Step →
+        </button>
+        {!form.audioUrl && (
+          <p className="text-ink-500 text-sm mt-3">👆 Please record your story first, then tap Next Step.</p>
+        )}
+      </div>
+    </div>
+  )
+}
+
+// ─── Stage 2: Details ─────────────────────────────────────────
+function StageDetails({ form, update, submitting, errorMsg, onBack, onSubmit }: {
+  form: VoiceForm
+  update: (p: Partial<VoiceForm>) => void
+  submitting: boolean
+  errorMsg: string
+  onBack: () => void
+  onSubmit: () => void
+}) {
   const [locating, setLocating] = useState(false)
+  const fileRef = useRef<HTMLInputElement>(null)
+  const videoRef = useRef<HTMLInputElement>(null)
+
   const locate = () => {
-    if (!navigator.geolocation) return
+    if (!navigator.geolocation) return alert('Location not available on this device.')
     setLocating(true)
     navigator.geolocation.getCurrentPosition(async pos => {
       const { latitude, longitude } = pos.coords
@@ -93,451 +264,288 @@ export default function SubmitPage() {
         country_name: geo?.country_name ?? '',
       })
       setLocating(false)
-    }, () => setLocating(false))
+    }, () => {
+      setLocating(false)
+      alert('Could not detect location. Please try again.')
+    })
   }
 
-  const handleSubmit = async () => {
-    setSubmitting(true)
-    setError(null)
-    try {
-      const supabase = createClient()
-      let cover_image_url: string | null = null
-      let video_upload_path: string | null = null
-
-      // Upload cover image
-      if (form.cover_image_file) {
-        const ext = form.cover_image_file.name.split('.').pop()
-        const path = `covers/${Date.now()}.${ext}`
-        const { error: upErr } = await supabase.storage
-          .from('story-media')
-          .upload(path, form.cover_image_file, { cacheControl: '3600', upsert: false })
-        if (upErr) throw new Error('Image upload failed: ' + upErr.message)
-        const { data: { publicUrl } } = supabase.storage.from('story-media').getPublicUrl(path)
-        cover_image_url = publicUrl
-      }
-
-      // Upload video file
-      if (form.video_file) {
-        const ext = form.video_file.name.split('.').pop()
-        const path = `videos/${Date.now()}.${ext}`
-        const { error: upErr } = await supabase.storage
-          .from('story-media')
-          .upload(path, form.video_file, { cacheControl: '3600', upsert: false })
-        if (upErr) throw new Error('Video upload failed: ' + upErr.message)
-        video_upload_path = path
-      }
-
-      // Submit to API
-      const payload: StorySubmission = {
-        title: form.title.trim(),
-        excerpt: form.excerpt.trim(),
-        body: form.body.trim(),
-        category: form.category as StoryCategory,
-        cover_image_url,
-        video_url: form.video_url.trim() || undefined,
-        video_upload_path,
-        latitude: form.latitude!,
-        longitude: form.longitude!,
-        location_name: form.location_name.trim(),
-        country_code: form.country_code.trim().toUpperCase(),
-        country_name: form.country_name.trim(),
-        author_name: form.author_name.trim(),
-        author_email: form.author_email.trim(),
-        author_bio: form.author_bio.trim() || undefined,
-        tags: form.tags.split(',').map(t => t.trim()).filter(Boolean),
-      }
-
-      const res = await fetch('/api/submit', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(payload),
-      })
-      if (!res.ok) throw new Error((await res.json()).error || 'Submission failed')
-
-      setSubmitted(true)
-    } catch (e: any) {
-      setError(e.message ?? 'Something went wrong. Please try again.')
-    } finally {
-      setSubmitting(false)
-    }
+  const onImagePick = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0]
+    if (!file) return
+    update({ cover_image_file: file, cover_image_preview: URL.createObjectURL(file) })
   }
 
-  if (submitted) return <SuccessScreen />
-
-  return (
-    <div className="min-h-screen bg-ink-950">
-      <SiteHeader />
-      <main className="pt-16">
-        <div className="max-w-2xl mx-auto px-6 py-16">
-          {/* Page header */}
-          <div className="mb-10">
-            <p className="font-mono text-xs tracking-[0.3em] text-brand-400 uppercase mb-3">
-              Share Your Story
-            </p>
-            <h1 className="font-display text-4xl text-ink-50 mb-3">
-              Add Your Voice to the Atlas
-            </h1>
-            <p className="text-ink-400 leading-relaxed">
-              Your story will be reviewed by our editors and, if approved, plotted on the
-              world map as part of a global collection of climate voices.
-            </p>
-          </div>
-
-          {/* Step progress */}
-          <div className="flex items-center gap-0 mb-10">
-            {STEPS.map((s, i) => (
-              <div key={s} className="flex items-center flex-1 last:flex-none">
-                <button
-                  onClick={() => i < currentIndex && setStep(s)}
-                  disabled={i > currentIndex}
-                  className={cn(
-                    'w-8 h-8 rounded-full flex items-center justify-center text-xs font-mono font-bold transition-colors flex-shrink-0',
-                    i < currentIndex && 'bg-brand-600 text-ink-50 cursor-pointer hover:bg-brand-500',
-                    i === currentIndex && 'bg-brand-500 text-white',
-                    i > currentIndex && 'bg-ink-800 text-ink-600',
-                  )}
-                >
-                  {i < currentIndex ? '✓' : i + 1}
-                </button>
-                <span className={cn(
-                  'hidden sm:block ml-2 text-xs font-mono mr-4',
-                  i === currentIndex ? 'text-ink-200' : 'text-ink-600'
-                )}>
-                  {STEP_LABELS[s]}
-                </span>
-                {i < STEPS.length - 1 && (
-                  <div className={cn(
-                    'flex-1 h-px mx-2',
-                    i < currentIndex ? 'bg-brand-700' : 'bg-ink-800'
-                  )} />
-                )}
-              </div>
-            ))}
-          </div>
-
-          {/* Step panels */}
-          <div className="bg-ink-900 border border-ink-800 rounded-sm p-8">
-
-            {/* ── Step 1: Story ── */}
-            {step === 'story' && (
-              <StepStory form={form} update={update} />
-            )}
-
-            {/* ── Step 2: Media ── */}
-            {step === 'media' && (
-              <StepMedia
-                form={form} update={update}
-                getRootProps={getRootProps} getInputProps={getInputProps}
-                isDragActive={isDragActive}
-              />
-            )}
-
-            {/* ── Step 3: Location ── */}
-            {step === 'location' && (
-              <StepLocation form={form} update={update} locating={locating} locate={locate} />
-            )}
-
-            {/* ── Step 4: Author ── */}
-            {step === 'author' && (
-              <StepAuthor form={form} update={update} />
-            )}
-
-            {/* ── Step 5: Review ── */}
-            {step === 'review' && (
-              <StepReview form={form} />
-            )}
-
-            {/* Navigation */}
-            {error && (
-              <div className="mt-6 flex items-start gap-2 text-red-400 bg-red-950/30 border border-red-900 rounded-sm p-4 text-sm">
-                <AlertCircle size={14} className="flex-shrink-0 mt-0.5" />
-                {error}
-              </div>
-            )}
-
-            <div className="flex items-center justify-between mt-8 pt-6 border-t border-ink-800">
-              <button
-                onClick={() => setStep(STEPS[currentIndex - 1])}
-                disabled={currentIndex === 0}
-                className="font-mono text-xs uppercase tracking-wider text-ink-500 hover:text-ink-200 disabled:opacity-0 transition-colors"
-              >
-                ← Back
-              </button>
-
-              {step === 'review' ? (
-                <button
-                  onClick={handleSubmit}
-                  disabled={submitting}
-                  className="flex items-center gap-2 bg-brand-500 hover:bg-brand-400 disabled:opacity-60 text-white font-semibold font-mono text-sm uppercase tracking-wider px-8 py-3 transition-colors"
-                >
-                  {submitting && <Loader2 size={14} className="animate-spin" />}
-                  {submitting ? 'Submitting…' : 'Submit Story'}
-                </button>
-              ) : (
-                <button
-                  onClick={() => setStep(STEPS[currentIndex + 1])}
-                  disabled={!canAdvance(step, form)}
-                  className="flex items-center gap-2 bg-brand-600 hover:bg-brand-500 disabled:opacity-40 disabled:cursor-not-allowed text-ink-50 font-mono text-xs uppercase tracking-wider px-6 py-3 transition-colors"
-                >
-                  Continue →
-                </button>
-              )}
-            </div>
-          </div>
-        </div>
-      </main>
-      <SiteFooter />
-    </div>
+  const canSubmit = !!(
+    form.author_name.trim() &&
+    form.author_email.trim() &&
+    form.latitude &&
+    form.longitude
   )
-}
 
-// ── Validation ──────────────────────────────────────────────
-function canAdvance(step: Step, form: FormData): boolean {
-  if (step === 'story')    return !!(form.title.trim() && form.excerpt.trim() && form.body.trim() && form.category)
-  if (step === 'media')    return true  // media is optional
-  if (step === 'location') return !!(form.latitude && form.longitude && form.location_name && form.country_code)
-  if (step === 'author')   return !!(form.author_name.trim() && form.author_email.trim())
-  return true
-}
-
-// ── Sub-step components ─────────────────────────────────────
-function Field({ label, children, hint }: { label: string; children: React.ReactNode; hint?: string }) {
-  return (
-    <div className="mb-6">
-      <label className="block font-mono text-xs tracking-[0.15em] uppercase text-ink-400 mb-2">{label}</label>
-      {children}
-      {hint && <p className="mt-1.5 text-ink-600 text-xs">{hint}</p>}
-    </div>
-  )
-}
-
-const inputCls = "w-full bg-ink-950 border border-ink-700 focus:border-brand-600 rounded-sm px-4 py-3 text-sm text-ink-200 placeholder:text-ink-700 outline-none transition-colors font-body"
-
-function StepStory({ form, update }: { form: FormData; update: (p: Partial<FormData>) => void }) {
   return (
     <div>
-      <h2 className="font-display text-2xl text-ink-50 mb-6">Tell your story</h2>
-      <Field label="Category" hint="Choose the theme that best fits your story">
-        <select value={form.category} onChange={e => update({ category: e.target.value as StoryCategory })} className={inputCls}>
-          <option value="">Select a category…</option>
-          {CATEGORIES.map(c => <option key={c} value={c}>{CATEGORY_LABELS[c]}</option>)}
-        </select>
-      </Field>
-      <Field label="Story Title">
-        <input type="text" value={form.title} onChange={e => update({ title: e.target.value })}
-          placeholder="A compelling, specific title" className={inputCls} maxLength={120} />
-      </Field>
-      <Field label="Summary" hint="1–2 sentences that appear in previews and on the map popup">
-        <textarea value={form.excerpt} onChange={e => update({ excerpt: e.target.value })}
-          placeholder="A short, compelling summary of your story…" rows={3}
-          className={inputCls + ' resize-none'} maxLength={280} />
-        <p className="text-right text-ink-700 text-xs mt-1">{form.excerpt.length}/280</p>
-      </Field>
-      <Field label="Full Story" hint="Write in plain text. Use double line breaks for paragraphs.">
-        <textarea value={form.body} onChange={e => update({ body: e.target.value })}
-          placeholder="Tell the full story here…" rows={12}
-          className={inputCls + ' resize-y'} />
-      </Field>
-      <Field label="Tags" hint="Comma-separated keywords, e.g. solar, adaptation, indigenous">
-        <input type="text" value={form.tags} onChange={e => update({ tags: e.target.value })}
-          placeholder="solar, adaptation, coastal, youth" className={inputCls} />
-      </Field>
-    </div>
-  )
-}
-
-function StepMedia({ form, update, getRootProps, getInputProps, isDragActive }: any) {
-  return (
-    <div>
-      <h2 className="font-display text-2xl text-ink-50 mb-2">Add media</h2>
-      <p className="text-ink-500 text-sm mb-6">All media is optional but greatly increases engagement.</p>
-
-      <Field label="Cover Image" hint="Max 10MB. Landscape orientation works best.">
-        <div
-          {...getRootProps()}
-          className={cn(
-            'border-2 border-dashed rounded-sm p-8 text-center cursor-pointer transition-colors',
-            isDragActive ? 'border-brand-500 bg-brand-950/20' : 'border-ink-700 hover:border-ink-500'
-          )}
-        >
-          <input {...getInputProps()} />
-          {form.cover_image_preview ? (
-            <div className="relative">
-              <img src={form.cover_image_preview} alt="Preview" className="max-h-40 mx-auto rounded-sm object-cover" />
-              <p className="text-ink-400 text-xs mt-3">Click or drag to replace</p>
-            </div>
-          ) : (
-            <>
-              <Upload size={24} className="mx-auto text-ink-600 mb-3" />
-              <p className="text-ink-400 text-sm">Drag & drop an image, or click to browse</p>
-            </>
-          )}
-        </div>
-      </Field>
-
-      <div className="border-t border-ink-800 pt-6 mb-6">
-        <p className="font-mono text-xs tracking-[0.15em] uppercase text-ink-400 mb-4">Video</p>
-        <div className="grid grid-cols-1 gap-4">
-          <Field label="YouTube or Vimeo URL" hint="Paste a YouTube watch URL or Vimeo URL">
-            <div className="relative">
-              <Link2 size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-ink-500" />
-              <input type="url" value={form.video_url} onChange={e => update({ video_url: e.target.value })}
-                placeholder="https://youtube.com/watch?v=..." className={inputCls + ' pl-9'} />
-            </div>
-          </Field>
-          <div className="text-center text-ink-600 font-mono text-xs">— or upload a video file —</div>
-          <Field label="Upload Video" hint="MP4 or WebM. Max 200MB.">
-            <input
-              type="file" accept="video/mp4,video/webm"
-              onChange={e => update({ video_file: e.target.files?.[0] ?? null })}
-              className="w-full text-sm text-ink-400 file:bg-ink-800 file:border file:border-ink-700 file:text-ink-300 file:rounded-sm file:px-4 file:py-2 file:mr-4 file:text-xs file:font-mono file:cursor-pointer"
-            />
-            {form.video_file && <p className="text-ink-400 text-xs mt-2">📹 {form.video_file.name}</p>}
-          </Field>
-        </div>
-      </div>
-    </div>
-  )
-}
-
-function StepLocation({ form, update, locating, locate }: any) {
-  return (
-    <div>
-      <h2 className="font-display text-2xl text-ink-50 mb-2">Where is this story from?</h2>
-      <p className="text-ink-500 text-sm mb-6">
-        Every story must be geolocated to appear on the world map. Click a location on the map,
-        use your current location, or enter coordinates manually.
+      <h2 className="font-display text-3xl text-ink-50 mb-2">Step 2: About You</h2>
+      <p className="text-ink-300 text-base mb-1 leading-relaxed">
+        Almost done! We just need a few details.
+      </p>
+      <p className="text-ink-400 text-sm mb-6 leading-relaxed">
+        Fields marked with <span className="text-brand-400 font-bold">*</span> are required. Everything else is optional.
       </p>
 
-      {/* Auto-locate */}
-      <button
-        onClick={locate}
-        disabled={locating}
-        className="flex items-center gap-2 bg-ink-800 hover:bg-ink-700 border border-ink-700 hover:border-brand-700 text-ink-200 text-sm font-mono px-4 py-2.5 rounded-sm mb-6 transition-colors"
-      >
-        <MapPin size={14} className={locating ? 'animate-pulse text-brand-400' : ''} />
-        {locating ? 'Detecting location…' : 'Use my current location'}
-      </button>
-
-      {/* Interactive map picker */}
-      <div className="mb-6 rounded-sm overflow-hidden border border-ink-700" style={{ height: 280 }}>
-        <LocationPicker
-          lat={form.latitude}
-          lng={form.longitude}
-          onPick={async (lat: number, lng: number) => {
-            const geo = await reverseGeocode(lat, lng)
-            update({
-              latitude: lat, longitude: lng,
-              location_name: geo?.location_name ?? form.location_name,
-              country_code: geo?.country_code ?? form.country_code,
-              country_name: geo?.country_name ?? form.country_name,
-            })
-          }}
+      {/* Name */}
+      <div className="mb-6">
+        <label className="block text-base font-bold text-ink-200 mb-1">Your Name <span className="text-brand-400">*</span></label>
+        <p className="text-ink-500 text-sm mb-2">Enter your first and last name.</p>
+        <input
+          type="text"
+          value={form.author_name}
+          onChange={e => update({ author_name: e.target.value })}
+          placeholder="Full name"
+          className="w-full bg-ink-950 border border-ink-700 focus:border-brand-600 rounded-lg px-4 py-4 text-base text-ink-200 placeholder:text-ink-700 outline-none transition-colors"
         />
       </div>
 
-      <div className="grid grid-cols-2 gap-4">
-        <Field label="Latitude">
-          <input type="number" step="0.0001" value={form.latitude ?? ''} onChange={e => update({ latitude: parseFloat(e.target.value) })}
-            placeholder="e.g. 23.8103" className={inputCls} />
-        </Field>
-        <Field label="Longitude">
-          <input type="number" step="0.0001" value={form.longitude ?? ''} onChange={e => update({ longitude: parseFloat(e.target.value) })}
-            placeholder="e.g. 90.4125" className={inputCls} />
-        </Field>
+      {/* Email */}
+      <div className="mb-6">
+        <label className="block text-base font-bold text-ink-200 mb-1">Email Address <span className="text-brand-400">*</span></label>
+        <p className="text-ink-500 text-sm mb-2">We will contact you here. Your email will never be shown publicly.</p>
+        <input
+          type="email"
+          value={form.author_email}
+          onChange={e => update({ author_email: e.target.value })}
+          placeholder="you@example.com"
+          className="w-full bg-ink-950 border border-ink-700 focus:border-brand-600 rounded-lg px-4 py-4 text-base text-ink-200 placeholder:text-ink-700 outline-none transition-colors"
+        />
       </div>
-      <Field label="Place Name">
-        <input type="text" value={form.location_name} onChange={e => update({ location_name: e.target.value })}
-          placeholder="Dhaka, Bangladesh" className={inputCls} />
-      </Field>
-      <div className="grid grid-cols-2 gap-4">
-        <Field label="Country Code" hint="ISO 3166 alpha-2, e.g. BD">
-          <input type="text" value={form.country_code} onChange={e => update({ country_code: e.target.value.toUpperCase() })}
-            placeholder="BD" maxLength={2} className={inputCls} />
-        </Field>
-        <Field label="Country Name">
-          <input type="text" value={form.country_name} onChange={e => update({ country_name: e.target.value })}
-            placeholder="Bangladesh" className={inputCls} />
-        </Field>
+
+      {/* Age Range */}
+      <div className="mb-6">
+        <label className="block text-base font-bold text-ink-200 mb-1">Your Age Range <span className="text-ink-500 font-normal text-sm">— optional</span></label>
+        <p className="text-ink-500 text-sm mb-2">This helps us understand who is sharing stories. You do not have to answer.</p>
+        <select
+          value={form.age_range}
+          onChange={e => update({ age_range: e.target.value })}
+          className="w-full bg-ink-950 border border-ink-700 focus:border-brand-600 rounded-lg px-4 py-4 text-base text-ink-200 outline-none transition-colors"
+        >
+          <option value="">Select your age range…</option>
+          {AGE_RANGES.map(r => <option key={r} value={r}>{r}</option>)}
+        </select>
       </div>
-    </div>
-  )
-}
 
-function StepAuthor({ form, update }: { form: FormData; update: (p: Partial<FormData>) => void }) {
-  return (
-    <div>
-      <h2 className="font-display text-2xl text-ink-50 mb-6">About you</h2>
-      <Field label="Your Name">
-        <input type="text" value={form.author_name} onChange={e => update({ author_name: e.target.value })}
-          placeholder="Full name" className={inputCls} />
-      </Field>
-      <Field label="Email Address" hint="For editorial communication only. Never published.">
-        <input type="email" value={form.author_email} onChange={e => update({ author_email: e.target.value })}
-          placeholder="you@example.com" className={inputCls} />
-      </Field>
-      <Field label="Short Bio" hint="Optional. Appears with your published story.">
-        <textarea value={form.author_bio} onChange={e => update({ author_bio: e.target.value })}
-          placeholder="Climate scientist, community organizer, or how you relate to this story…"
-          rows={3} className={inputCls + ' resize-none'} maxLength={200} />
-      </Field>
-    </div>
-  )
-}
+      {/* Location */}
+      <div className="mb-6">
+        <label className="block text-base font-bold text-ink-200 mb-1">Your Location <span className="text-brand-400">*</span></label>
+        <p className="text-ink-500 text-sm mb-3">Tap the button below and your phone will detect where you are automatically.</p>
+        <button
+          onClick={locate}
+          disabled={locating}
+          className={`w-full flex items-center justify-center gap-3 py-4 rounded-lg border font-mono text-sm uppercase tracking-wider font-bold transition-colors
+            ${form.latitude
+              ? 'bg-nature-900 border-nature-700 text-nature-300'
+              : 'bg-ink-800 hover:bg-ink-700 border-ink-700 hover:border-brand-600 text-ink-200'
+            }`}
+        >
+          <MapPin size={18} className={locating ? 'animate-bounce' : ''} />
+          {locating
+            ? 'Detecting location…'
+            : form.latitude
+              ? `📍 ${form.location_name || `${form.latitude.toFixed(2)}, ${form.longitude?.toFixed(2)}`}`
+              : 'Use My Current Location'
+          }
+        </button>
+        {form.latitude && (
+          <button
+            onClick={() => update({ latitude: null, longitude: null, location_name: '', country_code: '', country_name: '' })}
+            className="text-ink-600 hover:text-ink-400 text-xs font-mono mt-1.5 transition-colors"
+          >
+            Clear location
+          </button>
+        )}
+      </div>
 
-function StepReview({ form }: { form: FormData }) {
-  const rows: [string, string][] = [
-    ['Title', form.title],
-    ['Category', CATEGORY_LABELS[form.category as StoryCategory] ?? '—'],
-    ['Location', `${form.location_name} (${form.latitude?.toFixed(4)}, ${form.longitude?.toFixed(4)})`],
-    ['Author', form.author_name],
-    ['Email', form.author_email],
-    ['Video URL', form.video_url || '—'],
-    ['Uploaded Video', form.video_file?.name ?? '—'],
-    ['Tags', form.tags || '—'],
-  ]
-  return (
-    <div>
-      <h2 className="font-display text-2xl text-ink-50 mb-2">Review your submission</h2>
-      <p className="text-ink-500 text-sm mb-6">
-        Your story will enter an editorial review queue. Approved stories are published to the world map.
-        The review process typically takes 5–10 business days.
-      </p>
-      {form.cover_image_preview && (
-        <img src={form.cover_image_preview} alt="Cover" className="w-full h-40 object-cover rounded-sm mb-6" />
-      )}
-      <dl className="space-y-3">
-        {rows.map(([k, v]) => (
-          <div key={k} className="flex gap-4 text-sm border-b border-ink-800 pb-3 last:border-0">
-            <dt className="font-mono text-xs text-ink-500 uppercase tracking-wider w-32 flex-shrink-0 pt-0.5">{k}</dt>
-            <dd className="text-ink-200 flex-1 break-all">{v}</dd>
+      {/* Photo — optional */}
+      <div className="mb-6">
+        <label className="block text-base font-bold text-ink-200 mb-1">Photo <span className="text-ink-500 font-normal text-sm">— optional</span></label>
+        <p className="text-ink-500 text-sm mb-3">You can add a photo from your phone if you have one. This is not required.</p>
+        {form.cover_image_preview ? (
+          <div className="relative">
+            <img src={form.cover_image_preview} alt="Preview" className="w-full h-40 object-cover rounded-lg" />
+            <button
+              onClick={() => update({ cover_image_file: null, cover_image_preview: null })}
+              className="absolute top-2 right-2 bg-ink-900/80 text-ink-300 rounded-full p-1 hover:bg-ink-800"
+            >
+              <X size={14} />
+            </button>
           </div>
-        ))}
-      </dl>
-      <div className="mt-6 bg-ink-800/50 rounded-sm p-4">
-        <p className="text-ink-300 text-xs leading-relaxed">
-          <strong className="text-ink-100">Excerpt:</strong> {form.excerpt}
-        </p>
+        ) : (
+          <button
+            onClick={() => fileRef.current?.click()}
+            className="w-full flex items-center justify-center gap-3 py-4 rounded-lg border border-dashed border-ink-700 hover:border-ink-500 text-ink-500 hover:text-ink-300 text-sm transition-colors"
+          >
+            <Upload size={18} />
+            Add a Photo
+          </button>
+        )}
+        <input ref={fileRef} type="file" accept="image/*" className="hidden" onChange={onImagePick} />
       </div>
+
+      {/* Video — optional */}
+      <div className="mb-6">
+        <label className="block text-base font-bold text-ink-200 mb-1">Video <span className="text-ink-500 font-normal text-sm">— optional</span></label>
+        <p className="text-ink-500 text-sm mb-3">You can also add a video from your phone. This is not required.</p>
+        {form.video_file ? (
+          <div className="flex items-center gap-3 bg-ink-800 rounded-lg px-4 py-3">
+            <span className="text-ink-300 text-sm flex-1 truncate">📹 {form.video_file.name}</span>
+            <button onClick={() => update({ video_file: null })} className="text-ink-500 hover:text-ink-300">
+              <X size={14} />
+            </button>
+          </div>
+        ) : (
+          <button
+            onClick={() => videoRef.current?.click()}
+            className="w-full flex items-center justify-center gap-3 py-4 rounded-lg border border-dashed border-ink-700 hover:border-ink-500 text-ink-500 hover:text-ink-300 text-sm transition-colors"
+          >
+            <Upload size={18} />
+            Add a Video
+          </button>
+        )}
+        <input ref={videoRef} type="file" accept="video/mp4,video/webm,video/quicktime" className="hidden"
+          onChange={e => update({ video_file: e.target.files?.[0] ?? null })} />
+      </div>
+
+      {/* Error */}
+      {errorMsg && (
+        <div className="mb-5 flex items-start gap-2 text-red-400 bg-red-950/30 border border-red-900 rounded-lg p-4 text-sm">
+          <AlertCircle size={16} className="flex-shrink-0 mt-0.5" />
+          {errorMsg}
+        </div>
+      )}
+
+      {/* Nav */}
+      <div className="flex items-center justify-between pt-4 border-t border-ink-800 gap-4">
+        <button
+          onClick={onBack}
+          disabled={submitting}
+          className="text-ink-400 hover:text-ink-200 text-sm border border-ink-700 hover:border-ink-500 rounded-lg px-5 py-3 transition-colors"
+        >
+          ← Go Back
+        </button>
+        <button
+          onClick={onSubmit}
+          disabled={!canSubmit || submitting}
+          className="flex-1 flex items-center justify-center gap-2 bg-brand-600 hover:bg-brand-500 disabled:opacity-40 disabled:cursor-not-allowed text-white font-bold text-lg py-4 rounded-lg transition-colors"
+        >
+          {submitting && <Loader2 size={18} className="animate-spin" />}
+          {submitting ? 'Submitting…' : '✅ Submit My Story'}
+        </button>
+      </div>
+      {!canSubmit && (
+        <p className="text-ink-500 text-sm text-right mt-2">
+          Please fill in your name, email, and location above.
+        </p>
+      )}
     </div>
   )
 }
 
+// ─── Submit handler ───────────────────────────────────────────
+async function handleSubmit(form: VoiceForm): Promise<string | null> {
+  try {
+    const supabase = createClient()
+
+    let cover_image_url: string | null = null
+    let video_upload_path: string | null = null
+    let audio_upload_path: string | null = null
+
+    // Upload audio (required)
+    if (form.audioBlob) {
+      const path = `audio/${Date.now()}.webm`
+      const { error } = await supabase.storage
+        .from('story-media')
+        .upload(path, form.audioBlob, { contentType: 'audio/webm', cacheControl: '3600', upsert: false })
+      if (error) throw new Error('Audio upload failed: ' + error.message)
+      audio_upload_path = path
+    }
+
+    // Upload cover image
+    if (form.cover_image_file) {
+      const ext = form.cover_image_file.name.split('.').pop()
+      const path = `covers/${Date.now()}.${ext}`
+      const { error } = await supabase.storage
+        .from('story-media')
+        .upload(path, form.cover_image_file, { cacheControl: '3600', upsert: false })
+      if (error) throw new Error('Image upload failed: ' + error.message)
+      const { data: { publicUrl } } = supabase.storage.from('story-media').getPublicUrl(path)
+      cover_image_url = publicUrl
+    }
+
+    // Upload video file
+    if (form.video_file) {
+      const ext = form.video_file.name.split('.').pop()
+      const path = `videos/${Date.now()}.${ext}`
+      const { error } = await supabase.storage
+        .from('story-media')
+        .upload(path, form.video_file, { cacheControl: '3600', upsert: false })
+      if (error) throw new Error('Video upload failed: ' + error.message)
+      video_upload_path = path
+    }
+
+    // Submit to API
+    const res = await fetch('/api/submit', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        // Required by existing API / DB schema
+        title: `Voice Story — ${form.author_name}`,
+        excerpt: 'Voice submission — pending transcription.',
+        body: '[Voice recording — pending transcription]',
+        category: 'extreme_weather', // default; admin can update during review
+        cover_image_url,
+        video_upload_path,
+        audio_upload_path,
+        latitude: form.latitude,
+        longitude: form.longitude,
+        location_name: form.location_name,
+        country_code: form.country_code.toUpperCase(),
+        country_name: form.country_name,
+        author_name: form.author_name.trim(),
+        author_email: form.author_email.trim(),
+        age_range: form.age_range || null,
+        tags: ['voice-submission'],
+      }),
+    })
+
+    if (!res.ok) {
+      const body = await res.json().catch(() => ({}))
+      throw new Error(body.error || `Server error ${res.status}`)
+    }
+
+    return null
+  } catch (e: any) {
+    return e.message ?? 'Something went wrong. Please try again.'
+  }
+}
+
+// ─── Success ──────────────────────────────────────────────────
 function SuccessScreen() {
   return (
     <div className="min-h-screen bg-ink-950 flex flex-col">
       <SiteHeader />
       <div className="flex-1 flex items-center justify-center px-6 py-24">
         <div className="text-center max-w-md">
-          <div className="w-16 h-16 bg-nature-900 border border-nature-700 rounded-full flex items-center justify-center mx-auto mb-6">
-            <CheckCircle size={28} className="text-nature-400" />
+          <div className="w-20 h-20 bg-nature-900 border border-nature-700 rounded-full flex items-center justify-center mx-auto mb-6">
+            <CheckCircle size={36} className="text-nature-400" />
           </div>
-          <h1 className="font-display text-3xl text-ink-50 mb-4">Story Submitted</h1>
+          <h1 className="font-display text-3xl text-ink-50 mb-4">Story Received!</h1>
           <p className="text-ink-400 leading-relaxed mb-8">
-            Thank you. Your story has entered our editorial review queue.
-            We will be in touch via email within 5–10 business days.
+            Thank you for sharing your voice. Our editors will listen to your recording,
+            transcribe it, and reach out within 5–10 business days.
           </p>
-          <Link href="/" className="inline-block bg-brand-500 hover:bg-brand-400 text-white font-semibold font-mono text-xs uppercase tracking-wider px-8 py-3 transition-colors">
+          <Link
+            href="/"
+            className="inline-block bg-brand-500 hover:bg-brand-400 text-white font-semibold font-mono text-xs uppercase tracking-wider px-8 py-3 rounded-lg transition-colors"
+          >
             Back to the Map
           </Link>
         </div>
