@@ -16,7 +16,6 @@ export async function POST(req: Request) {
   if (!id || transcript === undefined) return NextResponse.json({ error: 'Missing fields' }, { status: 400 })
 
   const adminClient = createAdminClient()
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const db = adminClient as any
   const { error } = await db
     .from('stories')

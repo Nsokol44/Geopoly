@@ -11,7 +11,7 @@ export async function GET(req: Request) {
     return NextResponse.json({ error: 'Provide email or token' }, { status: 400 })
   }
 
-  const supabase = createAdminClient()
+  const supabase = createAdminClient() as any
 
   let query = supabase
     .from('stories')

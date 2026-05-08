@@ -209,10 +209,12 @@ const EMPTY: VoiceForm = {
 // ── Detect language from SiteHeader localStorage pref ────────
 function useLang(): Lang {
   const [lang, setLang] = useState<Lang>('en')
-  if (typeof window !== 'undefined') {
-    const saved = localStorage.getItem('geopoly_lang') as Lang
-    if (saved && T[saved] && saved !== lang) setLang(saved)
-  }
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      const saved = localStorage.getItem('geopoly_lang') as Lang
+      if (saved && T[saved]) setLang(saved)
+    }
+  }, [])
   return lang
 }
 

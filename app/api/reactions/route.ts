@@ -17,9 +17,9 @@ export async function GET(req: Request) {
     .single()
 
   const counts = {
-    inspired: countData?.inspired ?? 0,
-    seen_this: countData?.seen_this ?? 0,
-    urgent: countData?.urgent ?? 0,
+    inspired: (countData as any)?.inspired ?? 0,
+    seen_this: (countData as any)?.seen_this ?? 0,
+    urgent: (countData as any)?.urgent ?? 0,
   }
 
   let mine: string[] = []
