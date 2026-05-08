@@ -18,7 +18,7 @@ export async function POST(req: Request) {
   const adminClient = createAdminClient()
   const { error } = await adminClient
     .from('stories')
-    .update({ transcript: transcript.trim(), body: transcript.trim() || '[Voice recording — pending transcription]' })
+    .update({ transcript: transcript.trim(), body: transcript.trim() || '[Voice recording — pending transcription]' } as any)
     .eq('id', id)
 
   if (error) return NextResponse.json({ error: error.message }, { status: 500 })

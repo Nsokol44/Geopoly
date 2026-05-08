@@ -48,7 +48,7 @@ export function StoryReactions({ storyId }: Props) {
     // Optimistic update
     setMyReactions(prev => {
       const next = new Set(prev)
-      isRemoving ? next.delete(reaction) : next.add(reaction)
+      if (isRemoving) { next.delete(reaction) } else { next.add(reaction) }
       return next
     })
     setCounts(prev => ({
@@ -66,7 +66,7 @@ export function StoryReactions({ storyId }: Props) {
       // Revert on failure
       setMyReactions(prev => {
         const next = new Set(prev)
-        isRemoving ? next.add(reaction) : next.delete(reaction)
+        if (isRemoving) { next.add(reaction) } else { next.delete(reaction) }
         return next
       })
       setCounts(prev => ({
