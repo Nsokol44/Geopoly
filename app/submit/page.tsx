@@ -17,6 +17,7 @@ interface VoiceForm {
   audioBlob: Blob | null
   audioUrl: string | null
   audioDuration: number
+  audioMime: string
   author_name: string
   author_email: string
   age_range: string
@@ -31,7 +32,7 @@ interface VoiceForm {
 }
 
 const EMPTY: VoiceForm = {
-  audioBlob: null, audioUrl: null, audioDuration: 0,
+  audioBlob: null, audioUrl: null, audioDuration: 0, audioMime: '',
   author_name: '', author_email: '', age_range: '',
   latitude: null, longitude: null,
   location_name: '', country_code: '', country_name: '',
@@ -124,12 +125,19 @@ function StageRecord({ form, update, onNext }: {
   const startRecording = async () => {
     try {
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true })
-      const mr = new MediaRecorder(stream)
+      // Pick best supported format — iOS Safari needs mp4, Chrome uses webm
+      const mimeType = MediaRecorder.isTypeSupported('audio/webm;codecs=opus')
+        ? 'audio/webm;codecs=opus'
+        : MediaRecorder.isTypeSupported('audio/mp4')
+          ? 'audio/mp4'
+          : ''
+      const mr = mimeType ? new MediaRecorder(stream, { mimeType }) : new MediaRecorder(stream)
+      const actualMime = mr.mimeType || 'audio/webm'
       chunksRef.current = []
       mr.ondataavailable = e => { if (e.data.size > 0) chunksRef.current.push(e.data) }
       mr.onstop = () => {
-        const blob = new Blob(chunksRef.current, { type: 'audio/webm' })
-        update({ audioBlob: blob, audioUrl: URL.createObjectURL(blob), audioDuration: seconds })
+        const blob = new Blob(chunksRef.current, { type: actualMime })
+        update({ audioBlob: blob, audioUrl: URL.createObjectURL(blob), audioDuration: seconds, audioMime: actualMime })
         stream.getTracks().forEach(t => t.stop())
       }
       mr.start()
@@ -460,10 +468,12 @@ async function handleSubmit(form: VoiceForm): Promise<string | null> {
 
     // Upload audio (required)
     if (form.audioBlob) {
-      const path = `audio/${Date.now()}.webm`
+      const mime = form.audioMime || 'audio/webm'
+      const ext = mime.includes('mp4') ? 'mp4' : mime.includes('ogg') ? 'ogg' : 'webm'
+      const path = `audio/${Date.now()}.${ext}`
       const { error } = await supabase.storage
         .from('story-media')
-        .upload(path, form.audioBlob, { contentType: 'audio/webm', cacheControl: '3600', upsert: false })
+        .upload(path, form.audioBlob, { contentType: mime, cacheControl: '3600', upsert: false })
       if (error) throw new Error('Audio upload failed: ' + error.message)
       audio_upload_path = path
     }
