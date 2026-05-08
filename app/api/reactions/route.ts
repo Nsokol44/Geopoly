@@ -8,7 +8,7 @@ export async function GET(req: Request) {
   const fingerprint = searchParams.get('fingerprint')
   if (!story_id) return NextResponse.json({ error: 'Missing story_id' }, { status: 400 })
 
-  const supabase = createAdminClient()
+  const supabase = createAdminClient() as any
 
   const { data: countData } = await supabase
     .from('story_reaction_counts')
@@ -40,7 +40,7 @@ export async function POST(req: Request) {
   if (!story_id || !reaction || !fingerprint) {
     return NextResponse.json({ error: 'Missing fields' }, { status: 400 })
   }
-  const supabase = createAdminClient()
+  const supabase = createAdminClient() as any
   const { error } = await supabase
     .from('story_reactions')
     .insert({ story_id, reaction, fingerprint })
@@ -53,7 +53,7 @@ export async function DELETE(req: Request) {
   if (!story_id || !reaction || !fingerprint) {
     return NextResponse.json({ error: 'Missing fields' }, { status: 400 })
   }
-  const supabase = createAdminClient()
+  const supabase = createAdminClient() as any
   const { error } = await supabase
     .from('story_reactions')
     .delete()
