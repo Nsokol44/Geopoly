@@ -62,13 +62,15 @@ export async function POST(req: Request) {
         author_bio: body.author_bio?.trim() ?? null,
         tags: body.tags ?? [],
         status: 'pending',
+        audio_upload_path: body.audio_upload_path ?? null,
+        age_range: body.age_range ?? null,
       })
       .select('id')
       .single()
 
     if (error) {
       console.error('Story insert error:', error)
-      return NextResponse.json({ error: 'Database error' }, { status: 500 })
+      return NextResponse.json({ error: error.message ?? 'Database error' }, { status: 500 })
     }
 
     return NextResponse.json({ id: data.id }, { status: 201 })
