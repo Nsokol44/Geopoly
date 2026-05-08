@@ -1,7 +1,7 @@
 'use client'
 // app/submit/page.tsx — Elder-friendly voice submission (multilingual + on-behalf-of)
 
-import { useState, useRef } from 'react'
+import { useState, useRef, useEffect } from 'react'
 import { Mic, MicOff, MapPin, Upload, CheckCircle, Loader2, AlertCircle, X, User } from 'lucide-react'
 import { createClient } from '@/lib/supabase'
 import { reverseGeocode } from '@/lib/utils'
