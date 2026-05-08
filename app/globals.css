@@ -80,3 +80,14 @@
   font-style: italic;
   font-size: 1.25rem;
 }
+
+/* Text size accessibility classes */
+html.text-size-normal {
+  font-size: 16px;
+}
+html.text-size-large {
+  font-size: 20px;
+}
+html.text-size-xl {
+  font-size: 24px;
+}

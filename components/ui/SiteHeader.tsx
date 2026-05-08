@@ -1,26 +1,74 @@
 'use client'
 // components/ui/SiteHeader.tsx
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import Link from 'next/link'
-import { Menu, X } from 'lucide-react'
+import { Menu, X, Type } from 'lucide-react'
+
+// ── Language strings ─────────────────────────────────────────
+const LANGS = {
+  en: {
+    map: 'Map', stories: 'Stories', submit: 'Submit', share: 'Share Your Story', status: 'My Story',
+  },
+  es: {
+    map: 'Mapa', stories: 'Historias', submit: 'Enviar', share: 'Comparte tu Historia', status: 'Mi Historia',
+  },
+  fr: {
+    map: 'Carte', stories: 'Histoires', submit: 'Soumettre', share: 'Partagez votre Histoire', status: 'Mon Histoire',
+  },
+}
+
+export type Language = keyof typeof LANGS
+
+// Context so other components can read the language
+import { createContext, useContext } from 'react'
+export const LangContext = createContext<Language>('en')
+export const useLang = () => useContext(LangContext)
 
 export function SiteHeader() {
   const [open, setOpen] = useState(false)
+  const [lang, setLang] = useState<Language>('en')
+  const [textSize, setTextSize] = useState<'normal' | 'large' | 'xl'>('normal')
+
+  const t = LANGS[lang]
+
+  // Apply text size to root
+  useEffect(() => {
+    const root = document.documentElement
+    root.classList.remove('text-size-normal', 'text-size-large', 'text-size-xl')
+    root.classList.add(`text-size-${textSize}`)
+    // Persist
+    localStorage.setItem('geopoly_textsize', textSize)
+    localStorage.setItem('geopoly_lang', lang)
+  }, [textSize, lang])
+
+  // Load saved prefs
+  useEffect(() => {
+    const savedSize = localStorage.getItem('geopoly_textsize') as any
+    const savedLang = localStorage.getItem('geopoly_lang') as any
+    if (savedSize) setTextSize(savedSize)
+    if (savedLang && LANGS[savedLang as Language]) setLang(savedLang)
+  }, [])
+
+  const cycleFontSize = () => {
+    setTextSize(s => s === 'normal' ? 'large' : s === 'large' ? 'xl' : 'normal')
+  }
 
   const links = [
-    { href: '/', label: 'Map' },
-    { href: '/stories', label: 'Stories' },
-    { href: '/submit', label: 'Submit' },
+    { href: '/',        label: t.map },
+    { href: '/stories', label: t.stories },
+    { href: '/submit',  label: t.submit },
+    { href: '/status',  label: t.status },
   ]
+
+  const SIZE_LABEL = { normal: 'A', large: 'A+', xl: 'A++' }
 
   return (
     <header className="fixed top-0 left-0 right-0 z-50">
       <div className="bg-ink-950/85 backdrop-blur-md border-b border-ink-800/60">
         <div className="max-w-7xl mx-auto px-6 h-16 flex items-center justify-between">
 
-          {/* Geopoly Logo */}
+          {/* Logo */}
           <Link href="/" className="flex items-center gap-3">
-            {/* Yellow rectangle — nod to NatGeo border */}
             <div className="relative w-8 h-8 flex-shrink-0">
               <div className="absolute inset-0 border-2 border-brand-400" />
               <div
@@ -32,9 +80,7 @@ export function SiteHeader() {
             </div>
             <div className="leading-none">
               <div className="font-display text-base text-ink-50 tracking-wide font-bold">Geopoly</div>
-              <div className="font-mono text-[9px] text-ink-500 tracking-[0.2em] uppercase mt-0.5">
-                Climate Stories
-              </div>
+              <div className="font-mono text-[9px] text-ink-500 tracking-[0.2em] uppercase mt-0.5">Climate Stories</div>
             </div>
           </Link>
 
@@ -49,18 +95,63 @@ export function SiteHeader() {
                 {l.label}
               </Link>
             ))}
+
+            {/* Text size toggle */}
+            <button
+              onClick={cycleFontSize}
+              title="Change text size"
+              className="ml-2 font-mono text-xs px-3 py-2 text-ink-400 hover:text-ink-50 border border-ink-700 hover:border-ink-500 rounded-sm transition-colors"
+            >
+              <Type size={12} className="inline mr-1" />
+              {SIZE_LABEL[textSize]}
+            </button>
+
+            {/* Language switcher */}
+            <div className="ml-2 flex border border-ink-700 rounded-sm overflow-hidden">
+              {(Object.keys(LANGS) as Language[]).map(l => (
+                <button
+                  key={l}
+                  onClick={() => setLang(l)}
+                  className={`font-mono text-xs px-2.5 py-2 uppercase transition-colors
+                    ${lang === l ? 'bg-brand-600 text-white' : 'text-ink-400 hover:text-ink-200'}`}
+                >
+                  {l}
+                </button>
+              ))}
+            </div>
+
             <Link
               href="/submit"
-              className="ml-4 bg-brand-500 hover:bg-brand-400 text-white font-mono text-xs tracking-[0.2em] uppercase px-5 py-2 transition-colors font-semibold rounded-sm"
+              className="ml-3 bg-brand-500 hover:bg-brand-400 text-white font-mono text-xs tracking-[0.2em] uppercase px-5 py-2 transition-colors font-semibold rounded-sm"
             >
-              Share Your Story
+              {t.share}
             </Link>
           </nav>
 
-          {/* Mobile hamburger */}
-          <button className="md:hidden text-ink-400 hover:text-ink-50" onClick={() => setOpen(o => !o)}>
-            {open ? <X size={20} /> : <Menu size={20} />}
-          </button>
+          {/* Mobile controls */}
+          <div className="md:hidden flex items-center gap-2">
+            <button
+              onClick={cycleFontSize}
+              className="font-mono text-xs px-2 py-1.5 text-ink-400 border border-ink-700 rounded-sm"
+            >
+              {SIZE_LABEL[textSize]}
+            </button>
+            <div className="flex border border-ink-700 rounded-sm overflow-hidden">
+              {(Object.keys(LANGS) as Language[]).map(l => (
+                <button
+                  key={l}
+                  onClick={() => setLang(l)}
+                  className={`font-mono text-[10px] px-2 py-1.5 uppercase
+                    ${lang === l ? 'bg-brand-600 text-white' : 'text-ink-400'}`}
+                >
+                  {l}
+                </button>
+              ))}
+            </div>
+            <button className="text-ink-400 hover:text-ink-50" onClick={() => setOpen(o => !o)}>
+              {open ? <X size={20} /> : <Menu size={20} />}
+            </button>
+          </div>
         </div>
       </div>
 
@@ -83,7 +174,7 @@ export function SiteHeader() {
               onClick={() => setOpen(false)}
               className="mt-3 bg-brand-500 text-white font-mono text-xs tracking-[0.2em] uppercase px-5 py-3 text-center font-semibold rounded-sm"
             >
-              Share Your Story
+              {t.share}
             </Link>
           </nav>
         </div>

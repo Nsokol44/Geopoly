@@ -9,6 +9,8 @@ import { CategoryBadge } from '@/components/ui/CategoryBadge'
 import { SiteHeader } from '@/components/ui/SiteHeader'
 import { SiteFooter } from '@/components/ui/SiteFooter'
 import { StoryBody } from '@/components/stories/StoryBody'
+import { StoryReactions } from '@/components/stories/StoryReactions'
+import { ShareCard } from '@/components/stories/ShareCard'
 
 const categoryColor: Record<string, string> = {
   energy_transition: '#0b90e4',
@@ -17,7 +19,6 @@ const categoryColor: Record<string, string> = {
   extreme_weather: '#ef4444',
 }
 
-// Next 15: params is a Promise
 export async function generateMetadata({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params
   const story = await getStory(id)
@@ -145,6 +146,13 @@ export default async function StoryPage({ params }: { params: Promise<{ id: stri
                   </div>
                 </div>
               )}
+
+              {/* ── Reactions + Share ── */}
+              <div className="mt-10 flex items-center justify-between flex-wrap gap-4 border-t border-ink-800 pt-8">
+                <ShareCard story={story} />
+              </div>
+              <StoryReactions storyId={story.id} />
+
             </article>
 
             <aside className="space-y-6">
