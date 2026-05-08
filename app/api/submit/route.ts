@@ -1,7 +1,7 @@
 // @ts-nocheck
 // app/api/submit/route.ts
 import { NextResponse } from 'next/server'
-import { createServerSupabaseClient } from '@/lib/supabase-server'
+import { createAdminClient } from '@/lib/supabase-server'
 import type { StorySubmission } from '@/types'
 
 export async function POST(req: Request) {
@@ -41,7 +41,7 @@ export async function POST(req: Request) {
     }
 
     // ── Insert ─────────────────────────────────────────
-    const supabase = await createServerSupabaseClient()
+    const supabase = createAdminClient()
     const { data, error } = await supabase
       .from('stories')
       .insert({
