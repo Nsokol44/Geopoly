@@ -16,9 +16,11 @@ export async function POST(req: Request) {
   if (!id || transcript === undefined) return NextResponse.json({ error: 'Missing fields' }, { status: 400 })
 
   const adminClient = createAdminClient()
-  const { error } = await adminClient
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const db = adminClient as any
+  const { error } = await db
     .from('stories')
-    .update({ transcript: transcript.trim(), body: transcript.trim() || '[Voice recording — pending transcription]' } as any)
+    .update({ transcript: transcript.trim(), body: transcript.trim() || '[Voice recording — pending transcription]' })
     .eq('id', id)
 
   if (error) return NextResponse.json({ error: error.message }, { status: 500 })
