@@ -55,7 +55,7 @@ const T = {
     back: '← Go Back',
     submit: '✅ Submit My Story',
     submitting: 'Submitting…',
-    fillRequired: 'Please fill in your name, email, and location above.',
+    fillRequired: 'Please fill in your name and location above.',
     successTitle: 'Story Received!',
     successMsg: 'Thank you for sharing your voice. Our editors will listen to your recording, transcribe it, and be in touch within 5–10 business days.',
     statusPrompt: 'Want to check your status later?',
@@ -109,7 +109,7 @@ const T = {
     back: '← Volver',
     submit: '✅ Enviar mi Historia',
     submitting: 'Enviando…',
-    fillRequired: 'Por favor completa nombre, correo y ubicación.',
+    fillRequired: 'Por favor completa nombre y ubicación.',
     successTitle: '¡Historia Recibida!',
     successMsg: 'Gracias por compartir tu voz. Nuestros editores escucharán tu grabación y te contactarán en 5–10 días hábiles.',
     statusPrompt: '¿Quieres verificar tu estado más tarde?',
@@ -163,7 +163,7 @@ const T = {
     back: '← Retour',
     submit: '✅ Soumettre mon Histoire',
     submitting: 'Soumission…',
-    fillRequired: 'Veuillez remplir votre nom, e-mail et emplacement.',
+    fillRequired: 'Veuillez remplir votre nom et emplacement.',
     successTitle: 'Histoire Reçue !',
     successMsg: 'Merci de partager votre voix. Nos éditeurs écouteront votre enregistrement et vous contacteront dans 5–10 jours ouvrables.',
     statusPrompt: 'Vous voulez vérifier votre statut plus tard ?',
@@ -406,7 +406,7 @@ function StageDetails({ form, update, t, submitting, errorMsg, onBack, onSubmit 
     }, () => { setLocating(false); alert(t.locationFail) })
   }
 
-  const canSubmit = !!(form.author_name.trim() && form.author_email.trim() && form.latitude && form.longitude)
+  const canSubmit = !!(form.author_name.trim() && form.latitude && form.longitude)
 
   const inputCls = "w-full bg-ink-950 border border-ink-700 focus:border-brand-600 rounded-lg px-4 py-4 text-base text-ink-200 placeholder:text-ink-700 outline-none transition-colors"
 
@@ -425,7 +425,7 @@ function StageDetails({ form, update, t, submitting, errorMsg, onBack, onSubmit 
 
       {/* Email */}
       <div className="mb-6">
-        <label className="block text-base font-bold text-ink-200 mb-1">{t.emailLabel}</label>
+        <label className="block text-base font-bold text-ink-200 mb-1">{t.emailLabel} <span className="text-ink-500 font-normal text-sm">{t.photoOptional}</span></label>
         <p className="text-ink-500 text-sm mb-2">{t.emailDesc}</p>
         <input type="email" value={form.author_email} onChange={e => update({ author_email: e.target.value })} placeholder="you@example.com" className={inputCls} />
       </div>
