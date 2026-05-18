@@ -11,7 +11,7 @@ import { SuccessScreen } from './SuccessScreen'
 
 // ── Types ─────────────────────────────────────────────────────
 type Lang = 'en' | 'es' | 'fr'
-type Stage = 'record' | 'category' | 'prompts' | 'details' | 'submitting' | 'success'
+type Stage = 'category' | 'prompts' | 'details' | 'submitting' | 'success'
 type Category = 'energy_transition' | 'nature_land' | 'built_human' | 'extreme_weather'
 
 const AGE_RANGES = ['Under 18','18–24','25–34','35–44','45–54','55–64','65–74','75 or older','Prefer not to say']
@@ -180,7 +180,7 @@ const CATEGORIES: Record<Category, { emoji: string; color: string; label: Record
 const T = {
   en: {
     pageTitle: 'Share Your Story',
-    steps: ['Record', 'Topic', 'Prompts', 'Details'],
+    steps: ['Topic', 'Record & Prompts', 'Details'],
     step1Title: 'Step 1: Record Your Story',
     step1Desc: 'Press the big button below and speak your story out loud.',
     step1Sub: 'Speak as long as you need — there is no time limit.',
@@ -271,7 +271,7 @@ const T = {
 // ── Main Component ────────────────────────────────────────────
 export default function SubmitPage() {
   const [lang, setLang] = useState<Lang>('en')
-  const [stage, setStage] = useState<Stage>('record')
+  const [stage, setStage] = useState<Stage>('category')
   const [form, setForm] = useState<VoiceForm>(EMPTY)
   const [errorMsg, setErrorMsg] = useState('')
   const [successData, setSuccessData] = useState<{ authorName: string; locationName: string } | null>(null)
@@ -294,7 +294,7 @@ export default function SubmitPage() {
     return <SuccessScreen authorName={successData.authorName} locationName={successData.locationName} lang={lang} />
   }
 
-  const STAGE_ORDER: Stage[] = ['record', 'category', 'prompts', 'details']
+  const STAGE_ORDER: Stage[] = ['category', 'prompts', 'details']
   const currentIdx = STAGE_ORDER.indexOf(stage as any)
 
   return (
@@ -323,17 +323,13 @@ export default function SubmitPage() {
           </div>
 
           <div className="bg-ink-900 border border-ink-800 rounded-lg p-6 md:p-8">
-            {stage === 'record' && (
-              <StageRecord form={form} update={update} t={t} onNext={() => setStage('category')} />
-            )}
             {stage === 'category' && (
               <StageCategory form={form} update={update} t={t} lang={lang}
-                onBack={() => setStage('record')} onNext={() => setStage('prompts')} />
+                onBack={undefined} onNext={() => setStage('prompts')} />
             )}
             {stage === 'prompts' && form.category && (
-              <StagePrompts form={form} t={t} lang={lang}
+              <StagePrompts form={form} update={update} t={t} lang={lang}
                 onBack={() => setStage('category')}
-                onReRecord={() => setStage('record')}
                 onNext={() => setStage('details')} />
             )}
             {(stage === 'details' || stage === 'submitting') && (
@@ -355,99 +351,6 @@ export default function SubmitPage() {
         </div>
       </main>
       <SiteFooter />
-    </div>
-  )
-}
-
-// ── Stage 1: Record ───────────────────────────────────────────
-function StageRecord({ form, update, t, onNext }: any) {
-  const [recording, setRecording] = useState(false)
-  const [seconds, setSeconds] = useState(0)
-  const mediaRef = useRef<MediaRecorder | null>(null)
-  const chunksRef = useRef<Blob[]>([])
-  const timerRef = useRef<ReturnType<typeof setInterval> | null>(null)
-
-  const startRecording = async () => {
-    try {
-      const stream = await navigator.mediaDevices.getUserMedia({ audio: true })
-      const mimeType = MediaRecorder.isTypeSupported('audio/webm;codecs=opus')
-        ? 'audio/webm;codecs=opus'
-        : MediaRecorder.isTypeSupported('audio/mp4') ? 'audio/mp4' : ''
-      const mr = mimeType ? new MediaRecorder(stream, { mimeType }) : new MediaRecorder(stream)
-      const actualMime = mr.mimeType || 'audio/webm'
-      chunksRef.current = []
-      mr.ondataavailable = e => { if (e.data.size > 0) chunksRef.current.push(e.data) }
-      mr.onstop = () => {
-        const blob = new Blob(chunksRef.current, { type: actualMime })
-        update({ audioBlob: blob, audioUrl: URL.createObjectURL(blob), audioDuration: seconds, audioMime: actualMime })
-        stream.getTracks().forEach((tk: MediaStreamTrack) => tk.stop())
-      }
-      mr.start()
-      mediaRef.current = mr
-      setRecording(true)
-      setSeconds(0)
-      timerRef.current = setInterval(() => setSeconds(s => s + 1), 1000)
-    } catch { alert(t.micDenied) }
-  }
-
-  const stopRecording = () => {
-    mediaRef.current?.stop()
-    if (timerRef.current) clearInterval(timerRef.current)
-    setRecording(false)
-  }
-
-  const fmt = (s: number) => `${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')}`
-
-  return (
-    <div className="text-center">
-      <h2 className="font-display text-3xl text-ink-50 mb-3">{t.step1Title}</h2>
-      <p className="text-ink-300 text-base mb-2">{t.step1Desc}</p>
-      <p className="text-ink-400 text-sm mb-8 leading-relaxed">{t.step1Sub}</p>
-
-      {!form.audioUrl ? (
-        <div className="flex flex-col items-center gap-6">
-          <button onClick={recording ? stopRecording : startRecording}
-            className={`w-40 h-40 rounded-full flex flex-col items-center justify-center gap-3 transition-all shadow-xl
-              ${recording ? 'bg-red-600 animate-pulse scale-110' : 'bg-brand-600 hover:bg-brand-500 active:scale-95'}`}>
-            {recording ? <MicOff size={48} className="text-white" /> : <Mic size={48} className="text-white" />}
-            <span className="text-white text-sm font-bold uppercase tracking-wider">
-              {recording ? t.tapStop : t.tapRecord}
-            </span>
-          </button>
-          {recording && (
-            <div className="flex flex-col items-center gap-1">
-              <div className="flex items-center gap-2">
-                <div className="w-3 h-3 rounded-full bg-red-500 animate-pulse" />
-                <span className="text-red-400 font-bold">{t.recording}</span>
-              </div>
-              <span className="font-mono text-red-300 text-2xl tabular-nums">{fmt(seconds)}</span>
-              <p className="text-ink-500 text-sm mt-1">{t.tapAgain}</p>
-            </div>
-          )}
-          {!recording && <p className="text-ink-400 text-base">{t.tapBegin}</p>}
-        </div>
-      ) : (
-        <div className="flex flex-col items-center gap-5">
-          <div className="w-20 h-20 rounded-full bg-nature-900 border-2 border-nature-600 flex items-center justify-center">
-            <Mic size={36} className="text-nature-400" />
-          </div>
-          <p className="text-nature-400 text-base font-bold">{t.saved} ({fmt(form.audioDuration)})</p>
-          <p className="text-ink-400 text-sm">{t.listenBack}</p>
-          <audio controls src={form.audioUrl} className="w-full max-w-xs rounded-lg" />
-          <button onClick={() => update({ audioBlob: null, audioUrl: null, audioDuration: 0 })}
-            className="flex items-center gap-2 text-ink-400 hover:text-ink-200 text-sm border border-ink-700 rounded-lg px-5 py-2.5">
-            <X size={14} /> {t.reRecord}
-          </button>
-        </div>
-      )}
-
-      <div className="mt-8 pt-6 border-t border-ink-800">
-        <button onClick={onNext} disabled={!form.audioUrl}
-          className="w-full bg-brand-600 hover:bg-brand-500 disabled:opacity-40 text-white font-bold text-lg py-5 rounded-lg transition-colors">
-          {t.nextStep}
-        </button>
-        {!form.audioUrl && <p className="text-ink-500 text-sm mt-3">{t.recordFirst}</p>}
-      </div>
     </div>
   )
 }
@@ -489,16 +392,54 @@ function StageCategory({ form, update, t, lang, onBack, onNext }: any) {
   )
 }
 
-// ── Stage 3: Guided prompts ───────────────────────────────────
-function StagePrompts({ form, t, lang, onBack, onReRecord, onNext }: any) {
+// ── Stage 2: Prompts + Record (combined) ─────────────────────
+function StagePrompts({ form, update, t, lang, onBack, onNext }: any) {
   const prompts: string[] = form.category ? PROMPTS[form.category as Category][lang as Lang] : []
   const cfg = form.category ? CATEGORIES[form.category as Category] : null
+  const [recording, setRecording] = useState(false)
+  const [seconds, setSeconds] = useState(0)
+  const mediaRef = useRef<MediaRecorder | null>(null)
+  const chunksRef = useRef<Blob[]>([])
+  const timerRef = useRef<ReturnType<typeof setInterval> | null>(null)
+
+  const startRecording = async () => {
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true })
+      const mimeType = MediaRecorder.isTypeSupported('audio/webm;codecs=opus')
+        ? 'audio/webm;codecs=opus'
+        : MediaRecorder.isTypeSupported('audio/mp4') ? 'audio/mp4' : ''
+      const mr = mimeType ? new MediaRecorder(stream, { mimeType }) : new MediaRecorder(stream)
+      const actualMime = mr.mimeType || 'audio/webm'
+      chunksRef.current = []
+      mr.ondataavailable = e => { if (e.data.size > 0) chunksRef.current.push(e.data) }
+      mr.onstop = () => {
+        const blob = new Blob(chunksRef.current, { type: actualMime })
+        update({ audioBlob: blob, audioUrl: URL.createObjectURL(blob), audioDuration: seconds, audioMime: actualMime })
+        stream.getTracks().forEach((tk: MediaStreamTrack) => tk.stop())
+      }
+      mr.start()
+      mediaRef.current = mr
+      setRecording(true)
+      setSeconds(0)
+      timerRef.current = setInterval(() => setSeconds(s => s + 1), 1000)
+    } catch { alert(t.micDenied) }
+  }
+
+  const stopRecording = () => {
+    mediaRef.current?.stop()
+    if (timerRef.current) clearInterval(timerRef.current)
+    setRecording(false)
+  }
+
+  const fmt = (s: number) => `${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')}`
+
   return (
     <div>
       <h2 className="font-display text-3xl text-ink-50 mb-2">{t.step3Title}</h2>
       <p className="text-ink-300 text-base mb-1">{t.step3Desc}</p>
       <p className="text-ink-400 text-sm mb-5 leading-relaxed">{t.step3Sub}</p>
 
+      {/* Category badge */}
       {cfg && (
         <div className="flex items-center gap-2 mb-5 px-3 py-2 rounded-lg border w-fit"
           style={{ borderColor: `${cfg.color}44`, background: `${cfg.color}10` }}>
@@ -507,9 +448,10 @@ function StagePrompts({ form, t, lang, onBack, onReRecord, onNext }: any) {
         </div>
       )}
 
-      <div className="space-y-3 mb-6">
+      {/* Prompt list */}
+      <div className="space-y-2 mb-6">
         {prompts.map((prompt, i) => (
-          <div key={i} className="flex items-start gap-3 bg-ink-950 border border-ink-800 rounded-lg p-4">
+          <div key={i} className="flex items-start gap-3 bg-ink-950 border border-ink-800 rounded-lg p-3">
             <span className="font-mono text-xs font-bold mt-0.5 flex-shrink-0 w-5"
               style={{ color: cfg?.color ?? '#0b90e4' }}>{i + 1}.</span>
             <p className="text-ink-200 text-sm leading-relaxed">{prompt}</p>
@@ -517,20 +459,55 @@ function StagePrompts({ form, t, lang, onBack, onReRecord, onNext }: any) {
         ))}
       </div>
 
-      <button onClick={onReRecord}
-        className="w-full flex items-center justify-center gap-2 bg-ink-800 hover:bg-ink-700 border border-ink-700 text-ink-200 font-bold text-sm py-4 rounded-lg transition-colors mb-4">
-        {t.reRecordBtn}
-      </button>
+      {/* Record button — right here next to the prompts */}
+      <div className="bg-ink-950 border border-ink-800 rounded-xl p-5 mb-6 text-center">
+        <p className="text-ink-400 text-sm mb-4">
+          {form.audioUrl ? '✅ Recording saved! You can re-record below if needed.' : '👇 When ready, press record and speak your story using the prompts above as a guide.'}
+        </p>
+
+        {!form.audioUrl ? (
+          <div className="flex flex-col items-center gap-4">
+            <button onClick={recording ? stopRecording : startRecording}
+              className={`w-32 h-32 rounded-full flex flex-col items-center justify-center gap-2 transition-all shadow-xl
+                ${recording ? 'bg-red-600 animate-pulse scale-110' : 'bg-brand-600 hover:bg-brand-500 active:scale-95'}`}>
+              {recording ? <MicOff size={40} className="text-white" /> : <Mic size={40} className="text-white" />}
+              <span className="text-white text-xs font-bold uppercase tracking-wider">
+                {recording ? t.tapStop : t.tapRecord}
+              </span>
+            </button>
+            {recording && (
+              <div className="flex flex-col items-center gap-1">
+                <div className="flex items-center gap-2">
+                  <div className="w-3 h-3 rounded-full bg-red-500 animate-pulse" />
+                  <span className="text-red-400 font-bold text-sm">{t.recording}</span>
+                </div>
+                <span className="font-mono text-red-300 text-xl tabular-nums">{fmt(seconds)}</span>
+                <p className="text-ink-500 text-xs mt-1">{t.tapAgain}</p>
+              </div>
+            )}
+          </div>
+        ) : (
+          <div className="flex flex-col items-center gap-3">
+            <audio controls src={form.audioUrl} className="w-full max-w-xs rounded-lg" />
+            <p className="text-nature-400 text-sm font-bold">🎙 {fmt(form.audioDuration)} recorded</p>
+            <button onClick={() => update({ audioBlob: null, audioUrl: null, audioDuration: 0 })}
+              className="flex items-center gap-2 text-ink-400 hover:text-ink-200 text-sm border border-ink-700 rounded-lg px-4 py-2">
+              <X size={14} /> {t.reRecord}
+            </button>
+          </div>
+        )}
+      </div>
 
       <div className="flex items-center justify-between gap-4 pt-4 border-t border-ink-800">
         <button onClick={onBack} className="text-ink-400 hover:text-ink-200 text-sm border border-ink-700 rounded-lg px-5 py-3 transition-colors">
           {t.back}
         </button>
-        <button onClick={onNext}
-          className="flex-1 bg-brand-600 hover:bg-brand-500 text-white font-bold text-lg py-4 rounded-lg transition-colors">
+        <button onClick={onNext} disabled={!form.audioUrl}
+          className="flex-1 bg-brand-600 hover:bg-brand-500 disabled:opacity-40 text-white font-bold text-lg py-4 rounded-lg transition-colors">
           {t.nextStep}
         </button>
       </div>
+      {!form.audioUrl && <p className="text-ink-500 text-sm text-right mt-2">{t.recordFirst}</p>}
     </div>
   )
 }
