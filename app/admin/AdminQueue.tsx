@@ -242,7 +242,7 @@ export function AdminQueue({ stories: initialStories }: Props) {
             {/* Action bar */}
             <div className="flex items-center gap-3 px-5 py-3 border-t border-ink-800 bg-ink-950/40 flex-wrap">
               <a
-                href={`/story/${story.id}`}
+                href={`/admin/preview/${story.id}`}
                 target="_blank"
                 rel="noreferrer"
                 className="flex items-center gap-1.5 text-xs font-mono text-ink-500 hover:text-ink-200 transition-colors"
