@@ -41,6 +41,29 @@ export function SiteHeader() {
     localStorage.setItem('geopoly_lang', lang)
   }, [textSize, lang])
 
+  // Secret admin key combo: G → P → A
+  useEffect(() => {
+    const seq = ['g', 'p', 'a']
+    let idx = 0
+    let timer: ReturnType<typeof setTimeout>
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key.toLowerCase() === seq[idx]) {
+        idx++
+        clearTimeout(timer)
+        if (idx === seq.length) {
+          window.location.href = '/admin'
+          idx = 0
+        } else {
+          timer = setTimeout(() => { idx = 0 }, 1500)
+        }
+      } else {
+        idx = 0
+      }
+    }
+    window.addEventListener('keydown', onKey)
+    return () => { window.removeEventListener('keydown', onKey); clearTimeout(timer) }
+  }, [])
+
   // Load saved prefs
   useEffect(() => {
     const savedSize = localStorage.getItem('geopoly_textsize') as any
