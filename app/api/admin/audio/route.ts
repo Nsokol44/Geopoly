@@ -1,5 +1,4 @@
 // app/api/admin/audio/route.ts
-// Streams audio from Supabase storage to the admin browser
 import { NextResponse } from 'next/server'
 import { createAdminClient } from '@/lib/supabase-server'
 
@@ -18,7 +17,9 @@ export async function GET(req: Request) {
   }
 
   const ext = path.split('.').pop() ?? 'webm'
-  const contentType = ext === 'mp4' ? 'audio/mp4' : ext === 'ogg' ? 'audio/ogg' : 'audio/webm'
+  const contentType =
+    ext === 'mp4' ? 'audio/mp4' :
+    ext === 'ogg' ? 'audio/ogg' : 'audio/webm'
 
   return new NextResponse(data, {
     headers: {

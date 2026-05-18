@@ -11,11 +11,12 @@ export async function GET(req: Request) {
     return NextResponse.json({ error: 'Provide email or token' }, { status: 400 })
   }
 
-  const supabase = createAdminClient() as any
+  const supabase = createAdminClient()
 
   let query = supabase
     .from('stories')
     .select('id, title, status, location_name, created_at, author_name, submission_token')
+    .order('created_at', { ascending: false })
 
   if (token) {
     query = query.eq('submission_token', token)
@@ -23,13 +24,12 @@ export async function GET(req: Request) {
     query = query.eq('author_email', email!.toLowerCase().trim())
   }
 
-  const { data, error } = await query.order('created_at', { ascending: false })
+  const { data, error } = await query
 
   if (error) return NextResponse.json({ error: error.message }, { status: 500 })
 
   return NextResponse.json({
     stories: (data ?? []).map(s => ({
-      found: true,
       status: s.status,
       title: s.title,
       location_name: s.location_name,

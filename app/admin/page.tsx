@@ -1,7 +1,6 @@
-// @ts-nocheck
 // app/admin/page.tsx
 import { redirect } from 'next/navigation'
-import { createServerSupabaseClient } from '@/lib/supabase-server'
+import { createServerSupabaseClient, createAdminClient } from '@/lib/supabase-server'
 import { getPendingStories } from '@/lib/queries'
 import { AdminQueue } from './AdminQueue'
 import { SiteHeader } from '@/components/ui/SiteHeader'
@@ -12,17 +11,17 @@ export default async function AdminPage() {
   const supabase = await createServerSupabaseClient()
   const { data: { user } } = await supabase.auth.getUser()
 
-  // Must be logged in
   if (!user) redirect('/admin/login')
 
-  // Must be in admins table
-  const { data: admin } = await supabase
+  // Use admin client to bypass RLS when checking admins table
+  const adminDb = createAdminClient()
+  const { data: admin } = await adminDb
     .from('admins')
     .select('email')
     .eq('email', user.email!)
     .single()
 
-  if (!admin) redirect('/')
+  if (!admin) redirect('/admin/login')
 
   const pending = await getPendingStories()
 
@@ -40,7 +39,6 @@ export default async function AdminPage() {
               {pending.length} {pending.length === 1 ? 'story' : 'stories'} awaiting review
             </p>
           </div>
-
           <AdminQueue stories={pending} />
         </div>
       </main>

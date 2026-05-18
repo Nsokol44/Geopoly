@@ -8,18 +8,18 @@ export async function GET(req: Request) {
   const fingerprint = searchParams.get('fingerprint')
   if (!story_id) return NextResponse.json({ error: 'Missing story_id' }, { status: 400 })
 
-  const supabase = createAdminClient() as any
+  const supabase = createAdminClient()
 
   const { data: countData } = await supabase
     .from('story_reaction_counts')
-    .select('*')
+    .select('inspired, seen_this, urgent')
     .eq('story_id', story_id)
-    .single()
+    .maybeSingle()
 
   const counts = {
-    inspired: (countData as any)?.inspired ?? 0,
-    seen_this: (countData as any)?.seen_this ?? 0,
-    urgent: (countData as any)?.urgent ?? 0,
+    inspired:  countData?.inspired  ?? 0,
+    seen_this: countData?.seen_this ?? 0,
+    urgent:    countData?.urgent    ?? 0,
   }
 
   let mine: string[] = []
@@ -29,7 +29,7 @@ export async function GET(req: Request) {
       .select('reaction')
       .eq('story_id', story_id)
       .eq('fingerprint', fingerprint)
-    mine = (myData ?? []).map((r: any) => r.reaction)
+    mine = (myData ?? []).map(r => r.reaction)
   }
 
   return NextResponse.json({ counts, mine })
@@ -40,7 +40,7 @@ export async function POST(req: Request) {
   if (!story_id || !reaction || !fingerprint) {
     return NextResponse.json({ error: 'Missing fields' }, { status: 400 })
   }
-  const supabase = createAdminClient() as any
+  const supabase = createAdminClient()
   const { error } = await supabase
     .from('story_reactions')
     .insert({ story_id, reaction, fingerprint })
@@ -53,7 +53,7 @@ export async function DELETE(req: Request) {
   if (!story_id || !reaction || !fingerprint) {
     return NextResponse.json({ error: 'Missing fields' }, { status: 400 })
   }
-  const supabase = createAdminClient() as any
+  const supabase = createAdminClient()
   const { error } = await supabase
     .from('story_reactions')
     .delete()

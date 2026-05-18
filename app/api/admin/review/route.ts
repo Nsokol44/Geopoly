@@ -1,36 +1,39 @@
-// @ts-nocheck
 // app/api/admin/review/route.ts
 import { NextResponse } from 'next/server'
-import { createServerSupabaseClient } from '@/lib/supabase-server'
+import { createServerSupabaseClient, createAdminClient } from '@/lib/supabase-server'
 
 export async function POST(req: Request) {
   try {
+    // Verify session
     const supabase = await createServerSupabaseClient()
     const { data: { user } } = await supabase.auth.getUser()
     if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
-    const { data: admin } = await supabase
-      .from('admins').select('email').eq('email', user.email!).single()
+    // Verify admin using admin client (bypasses RLS)
+    const adminDb = createAdminClient()
+    const { data: admin } = await adminDb
+      .from('admins')
+      .select('email')
+      .eq('email', user.email!)
+      .single()
     if (!admin) return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
 
     const { id, status, featured } = await req.json()
-    if (!id || !['approved', 'rejected'].includes(status))
+    if (!id || !['approved', 'rejected'].includes(status)) {
       return NextResponse.json({ error: 'Invalid payload' }, { status: 400 })
+    }
 
-    // Cast the entire client to any — this is the only reliable way to bypass
-    // the generated-types 'never' mismatch on .update() without regenerating types
-    const db = supabase as any
-    const { error } = await db
+    const { error } = await adminDb
       .from('stories')
       .update({
-        status: status,
+        status,
         featured: status === 'approved' ? Boolean(featured) : false,
       })
       .eq('id', id)
 
     if (error) {
       console.error('Admin review error:', error)
-      return NextResponse.json({ error: 'Database error' }, { status: 500 })
+      return NextResponse.json({ error: error.message }, { status: 500 })
     }
 
     return NextResponse.json({ ok: true })
