@@ -5,6 +5,7 @@ const nextConfig: NextConfig = {
     remotePatterns: [{ protocol: 'https', hostname: '**' }],
   },
   eslint: { ignoreDuringBuilds: true },
+  // ESLint disabled during builds
   typescript: { ignoreBuildErrors: true },
 }
 

@@ -12,7 +12,7 @@ export async function POST(req: Request) {
   catch (e: any) { return NextResponse.json({ error: e.message }, { status: 400 }) }
 
   if (event.type === 'checkout.session.completed') {
-    const session = event.data.object as Stripe.CheckoutSession
+    const session = event.data.object as Stripe.Checkout.Session
     const tipId = session.metadata?.tip_id
     const storyId = session.metadata?.story_id
     if (tipId && storyId) {
