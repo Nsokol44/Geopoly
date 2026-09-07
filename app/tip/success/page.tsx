@@ -1,9 +1,9 @@
 'use client'
-import { useEffect } from 'react'
+import { Suspense, useEffect } from 'react'
 import { useSearchParams } from 'next/navigation'
 import Link from 'next/link'
 
-export default function TipSuccessPage() {
+function TipSuccessContent() {
   const params = useSearchParams()
   const storyId = params.get('story')
   const tipId = params.get('tip')
@@ -44,5 +44,13 @@ export default function TipSuccessPage() {
         </div>
       </div>
     </div>
+  )
+}
+
+export default function TipSuccessPage() {
+  return (
+    <Suspense fallback={null}>
+      <TipSuccessContent />
+    </Suspense>
   )
 }
