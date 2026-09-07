@@ -1,127 +1,46 @@
 'use client'
-// app/admin/login/page.tsx
 import { useState } from 'react'
-import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase'
-import { Loader2, Mail, Lock, AlertCircle } from 'lucide-react'
 
-export default function AdminLoginPage() {
+export default function AdminLogin() {
   const router = useRouter()
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [loading, setLoading] = useState(false)
-  const [errMsg, setErrMsg] = useState('')
+  const [error, setError] = useState('')
 
-  const handleSubmit = async (e: React.FormEvent) => {
+  const submit = async (e: React.FormEvent) => {
     e.preventDefault()
-    if (!email.trim() || !password.trim()) return
-    setLoading(true)
-    setErrMsg('')
-
-    const supabase = createClient()
-    const { error } = await supabase.auth.signInWithPassword({
-      email: email.trim().toLowerCase(),
-      password,
-    })
-
-    if (error) {
-      setErrMsg('Invalid email or password.')
-      setLoading(false)
-    } else {
-      router.push('/admin')
-      router.refresh()
-    }
+    setLoading(true); setError('')
+    const { error: err } = await createClient().auth.signInWithPassword({ email: email.trim().toLowerCase(), password })
+    if (err) { setError('Invalid email or password.'); setLoading(false) }
+    else { router.push('/admin'); router.refresh() }
   }
 
   return (
-    <div className="min-h-screen bg-ink-950 flex items-center justify-center px-6">
-      <div
-        className="absolute inset-0 opacity-[0.03]"
-        style={{
-          backgroundImage: `linear-gradient(#0b90e4 1px, transparent 1px), linear-gradient(90deg, #0b90e4 1px, transparent 1px)`,
-          backgroundSize: '48px 48px',
-        }}
-      />
-      <div className="relative w-full max-w-sm">
-        <div className="flex items-center justify-center gap-3 mb-10">
-          <div className="relative w-8 h-8">
-            <div className="absolute inset-0 border-2 border-brand-400" />
-            <div className="absolute inset-[4px] bg-brand-500" />
-          </div>
-          <div className="leading-none">
-            <div className="font-display text-base text-ink-50 tracking-wide">Geopoly</div>
-            <div className="font-mono text-[9px] text-ink-500 tracking-[0.25em] uppercase mt-0.5">Editorial Admin</div>
-          </div>
+    <div className="min-h-screen bg-zinc-950 flex items-center justify-center px-6">
+      <div className="w-full max-w-sm">
+        <div className="text-center mb-8">
+          <div className="inline-block bg-yellow-400 text-zinc-950 font-black text-xs px-2 py-1 rounded mb-3">$1</div>
+          <h1 className="font-black text-2xl text-white">Admin Sign In</h1>
         </div>
-
-        <div className="bg-ink-900 border border-ink-800 rounded-sm shadow-2xl overflow-hidden">
-          <div className="h-0.5 bg-gradient-to-r from-brand-700 via-brand-400 to-brand-700" />
-          <div className="p-8">
-            <div className="mb-7">
-              <h1 className="font-display text-2xl text-ink-50 mb-1">Sign in</h1>
-              <p className="text-ink-500 text-sm">Admin access only.</p>
-            </div>
-
-            <form onSubmit={handleSubmit} className="space-y-5">
-              <div>
-                <label className="block font-mono text-[10px] tracking-[0.2em] uppercase text-ink-400 mb-2">
-                  Email address
-                </label>
-                <div className="relative">
-                  <Mail size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-ink-600" />
-                  <input
-                    type="email"
-                    value={email}
-                    onChange={e => setEmail(e.target.value)}
-                    placeholder="you@email.com"
-                    required
-                    autoFocus
-                    className="w-full bg-ink-950 border border-ink-700 focus:border-brand-600 rounded-sm pl-9 pr-4 py-3 text-sm text-ink-200 placeholder:text-ink-700 outline-none transition-colors"
-                  />
-                </div>
+        <div className="bg-zinc-900 border border-zinc-800 rounded-2xl p-8">
+          <form onSubmit={submit} className="space-y-4">
+            {[{ label: 'Email', val: email, set: setEmail, type: 'email', ph: 'you@email.com' },
+              { label: 'Password', val: password, set: setPassword, type: 'password', ph: '••••••••' }].map(({ label, val, set, type, ph }) => (
+              <div key={label}>
+                <label className="block text-xs font-black text-zinc-400 uppercase tracking-wider mb-2">{label}</label>
+                <input type={type} value={val} onChange={e => set(e.target.value)} placeholder={ph} required
+                  className="w-full bg-zinc-950 border border-zinc-700 focus:border-yellow-400 rounded-xl px-4 py-3 text-white placeholder:text-zinc-700 outline-none transition-colors" />
               </div>
-
-              <div>
-                <label className="block font-mono text-[10px] tracking-[0.2em] uppercase text-ink-400 mb-2">
-                  Password
-                </label>
-                <div className="relative">
-                  <Lock size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-ink-600" />
-                  <input
-                    type="password"
-                    value={password}
-                    onChange={e => setPassword(e.target.value)}
-                    placeholder="••••••••"
-                    required
-                    className="w-full bg-ink-950 border border-ink-700 focus:border-brand-600 rounded-sm pl-9 pr-4 py-3 text-sm text-ink-200 placeholder:text-ink-700 outline-none transition-colors"
-                  />
-                </div>
-              </div>
-
-              {errMsg && (
-                <div className="flex items-start gap-2 text-red-400 bg-red-950/30 border border-red-900/50 rounded-sm px-4 py-3 text-xs">
-                  <AlertCircle size={13} className="flex-shrink-0 mt-0.5" />
-                  {errMsg}
-                </div>
-              )}
-
-              <button
-                type="submit"
-                disabled={loading || !email.trim() || !password.trim()}
-                className="w-full flex items-center justify-center gap-2 bg-brand-500 hover:bg-brand-400 disabled:opacity-50 disabled:cursor-not-allowed text-white font-semibold font-mono text-xs tracking-[0.2em] uppercase py-3 transition-colors rounded-sm"
-              >
-                {loading && <Loader2 size={13} className="animate-spin" />}
-                {loading ? 'Signing in...' : 'Sign In'}
-              </button>
-            </form>
-          </div>
-        </div>
-
-        <div className="mt-6 text-center">
-          <Link href="/" className="text-xs font-mono text-ink-600 hover:text-ink-400 transition-colors tracking-wider uppercase">
-            Back to site
-          </Link>
+            ))}
+            {error && <p className="text-red-400 text-sm bg-red-950/30 border border-red-900 rounded-xl p-3">{error}</p>}
+            <button type="submit" disabled={loading || !email || !password}
+              className="w-full bg-yellow-400 hover:bg-yellow-300 disabled:opacity-40 text-zinc-950 font-black py-3 rounded-full transition-colors">
+              {loading ? 'Signing in…' : 'Sign In'}
+            </button>
+          </form>
         </div>
       </div>
     </div>

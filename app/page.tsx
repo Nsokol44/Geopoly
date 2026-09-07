@@ -1,118 +1,122 @@
-// app/page.tsx
-import { getFeaturedStories, getCountryStats } from '@/lib/queries'
-import { MapSection } from '@/components/map/MapSection'
-import { FeaturedStories } from '@/components/stories/FeaturedStories'
-import { GlobalStats } from '@/components/stories/GlobalStats'
-import { SiteHeader } from '@/components/ui/SiteHeader'
-import { SiteFooter } from '@/components/ui/SiteFooter'
-import { ScrollDown } from '@/components/ui/ScrollDown'
+import Link from 'next/link'
+import { createAdminClient } from '@/lib/supabase-server'
+import type { Story } from '@/types'
 
-export const revalidate = 300
+export const revalidate = 60
+
+async function getData() {
+  const db = createAdminClient()
+  const [{ data: stories }, { count }, { data: tips }] = await Promise.all([
+    db.from('stories').select('*').eq('status', 'approved').order('created_at', { ascending: false }).limit(24),
+    db.from('stories').select('*', { count: 'exact', head: true }).eq('status', 'approved'),
+    db.from('tips').select('net_amount').eq('status', 'completed'),
+  ])
+  const totalPaid = (tips ?? []).reduce((s, t) => s + Number(t.net_amount), 0)
+  return { stories: (stories ?? []) as Story[], storyCount: count ?? 0, totalPaid }
+}
 
 export default async function HomePage() {
-  let featuredStories: any[] = []
-  let countryStats: any[] = []
-  try {
-    ;[featuredStories, countryStats] = await Promise.all([
-      getFeaturedStories(6),
-      getCountryStats(),
-    ])
-  } catch (e) {
-    console.error('Supabase fetch error:', e)
-  }
-
-  const totalStories = countryStats.reduce((sum: number, c: any) => sum + (c.story_count ?? 0), 0)
-  const totalCountries = countryStats.length
-
-  const subtext = totalStories > 0
-    ? `${totalStories.toLocaleString()} stories from ${totalCountries} countries. Click any light to read.`
-    : 'Real voices from communities navigating a warming world. Click any light to read.'
+  const { stories, storyCount, totalPaid } = await getData()
 
   return (
-    <div className="min-h-screen bg-ink-950">
-      <SiteHeader />
-
-      <section className="relative" style={{ height: '100vh', minHeight: 600 }}>
-        <div className="absolute inset-0" style={{ zIndex: 0 }}>
-          <MapSection stories={[]} countryStats={[]} />
-        </div>
-
-        <div
-          className="absolute bottom-0 left-0 right-0 pointer-events-none"
-          style={{
-            zIndex: 15,
-            background: 'linear-gradient(to top, rgba(8,14,26,0.88) 0%, rgba(8,14,26,0.3) 45%, transparent 100%)',
-            padding: '5rem 1.5rem 5rem',
-          }}
-        >
-          <div className="max-w-2xl">
-            <p className="font-mono text-xs tracking-[0.3em] text-brand-400 uppercase mb-3">
-              National Geographic x The Climate Pledge
-            </p>
-            <h1
-              className="font-display font-bold text-white mb-3 leading-tight"
-              style={{ fontSize: 'clamp(2rem, 4vw, 3.5rem)' }}
-            >
-              A Living Atlas<br />
-              <span className="text-brand-400">of Resilience</span>
-            </h1>
-            <p
-              className="text-white/60 max-w-lg leading-relaxed"
-              style={{ fontSize: 'clamp(0.875rem, 1.2vw, 1.05rem)' }}
-            >
-              {subtext}
-            </p>
+    <div className="min-h-screen bg-zinc-950">
+      <Header />
+      {/* Hero */}
+      <section className="border-b border-zinc-800 py-20 px-6 text-center">
+        <div className="max-w-2xl mx-auto">
+          <div className="inline-block bg-yellow-400 text-zinc-950 font-black text-xs uppercase tracking-widest px-3 py-1 rounded-full mb-6">
+            Voice Stories
           </div>
-        </div>
-
-        <div className="absolute bottom-6 left-1/2 -translate-x-1/2" style={{ zIndex: 20 }}>
-          <ScrollDown targetId="below-map" />
+          <h1 className="font-black text-6xl md:text-8xl text-white mb-4 leading-none tracking-tight">
+            Just Gimme<br /><span className="text-yellow-400">A Dolla</span>
+          </h1>
+          <p className="text-zinc-400 text-xl mb-8">Real people. Real stories. If it moves you — send a dollar.</p>
+          <div className="flex items-center justify-center gap-8 mb-10">
+            <div className="text-center">
+              <p className="text-4xl font-black text-white">{storyCount}</p>
+              <p className="text-zinc-500 text-xs uppercase tracking-wider mt-1">Stories</p>
+            </div>
+            <div className="w-px h-12 bg-zinc-800" />
+            <div className="text-center">
+              <p className="text-4xl font-black text-yellow-400">${totalPaid.toFixed(0)}</p>
+              <p className="text-zinc-500 text-xs uppercase tracking-wider mt-1">Sent to Creators</p>
+            </div>
+          </div>
+          <Link href="/create" className="inline-block bg-yellow-400 hover:bg-yellow-300 text-zinc-950 font-black text-sm uppercase tracking-wider px-8 py-4 rounded-full transition-colors">
+            Share Your Story →
+          </Link>
         </div>
       </section>
 
-      <div id="below-map">
-        <GlobalStats totalStories={totalStories} totalCountries={totalCountries} countryStats={countryStats} />
-
-        <section className="max-w-7xl mx-auto px-6 py-20">
-          <div className="flex items-end justify-between mb-12">
-            <div>
-              <p className="font-mono text-xs tracking-[0.3em] text-brand-400 uppercase mb-3">
-                Editor&apos;s Selection
-              </p>
-              <h2 className="font-display text-4xl md:text-5xl text-ink-50">Featured Stories</h2>
-            </div>
-            <a
-              href="/stories"
-              className="hidden md:flex items-center gap-2 text-brand-400 hover:text-brand-300 transition-colors font-mono text-sm tracking-wider uppercase"
-            >
-              All Stories
-            </a>
+      {/* Feed */}
+      <section className="max-w-6xl mx-auto px-6 py-16">
+        <h2 className="font-black text-2xl text-white mb-8">Latest Stories</h2>
+        {stories.length === 0 ? (
+          <div className="text-center py-20">
+            <p className="text-zinc-500 text-lg mb-4">No stories yet. Be the first.</p>
+            <Link href="/create" className="text-yellow-400 font-black hover:text-yellow-300">Share yours →</Link>
           </div>
-          <FeaturedStories stories={featuredStories} />
-        </section>
-
-        <section className="border-t border-ink-800">
-          <div className="max-w-4xl mx-auto px-6 py-24 text-center">
-            <p className="font-mono text-xs tracking-[0.3em] text-brand-400 uppercase mb-4">
-              Your Story Matters
-            </p>
-            <h2 className="font-display text-4xl md:text-5xl text-ink-50 mb-6">
-              Add Your Voice to the Atlas
-            </h2>
-            <p className="text-ink-300 text-lg mb-10 max-w-2xl mx-auto leading-relaxed">
-              Are you witnessing climate change firsthand? Share your story and strengthen the case for action.
-            </p>
-            <a
-              href="/submit"
-              className="inline-block bg-brand-500 hover:bg-brand-400 text-white font-semibold px-10 py-4 transition-colors font-mono tracking-wider uppercase text-sm rounded-sm"
-            >
-              Submit Your Story
-            </a>
+        ) : (
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            {stories.map(s => <StoryCard key={s.id} story={s} />)}
           </div>
-        </section>
-
-        <SiteFooter />
-      </div>
+        )}
+      </section>
+      <Footer />
     </div>
+  )
+}
+
+function StoryCard({ story }: { story: Story }) {
+  return (
+    <Link href={`/story/${story.id}`}
+      className="group block bg-zinc-900 border border-zinc-800 hover:border-yellow-400/50 rounded-2xl overflow-hidden transition-all hover:scale-[1.01]">
+      <div className="h-40 bg-zinc-800 flex items-center justify-center overflow-hidden relative">
+        {story.cover_image_url
+          ? <img src={story.cover_image_url} alt={story.title} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" />
+          : <div className="flex flex-col items-center gap-2">
+              <div className="w-14 h-14 rounded-full bg-yellow-400/10 border border-yellow-400/30 flex items-center justify-center">
+                <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#facc15" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 2a3 3 0 0 0-3 3v7a3 3 0 0 0 6 0V5a3 3 0 0 0-3-3Z"/><path d="M19 10v2a7 7 0 0 1-14 0v-2"/><line x1="12" x2="12" y1="19" y2="22"/></svg>
+              </div>
+              <span className="text-zinc-600 text-xs">Voice Story</span>
+            </div>
+        }
+      </div>
+      <div className="p-5">
+        <h3 className="font-black text-white text-lg leading-tight mb-1 line-clamp-2 group-hover:text-yellow-400 transition-colors">{story.title}</h3>
+        <p className="text-zinc-500 text-sm mb-3">by {story.author_name}</p>
+        {story.transcript && <p className="text-zinc-600 text-sm line-clamp-2">{story.transcript}</p>}
+        <div className="flex items-center justify-between mt-4 pt-4 border-t border-zinc-800">
+          <span className="text-yellow-400 font-black text-sm">
+            {story.tip_count > 0 ? `${story.tip_count} tip${story.tip_count !== 1 ? 's' : ''} · $${Number(story.tip_total).toFixed(0)}` : '💛 Send a dolla'}
+          </span>
+          <span className="text-zinc-700 text-xs">{new Date(story.created_at).toLocaleDateString()}</span>
+        </div>
+      </div>
+    </Link>
+  )
+}
+
+function Header() {
+  return (
+    <header className="sticky top-0 z-50 bg-zinc-950/90 backdrop-blur border-b border-zinc-800">
+      <div className="max-w-6xl mx-auto px-6 h-16 flex items-center justify-between">
+        <Link href="/" className="flex items-center gap-2">
+          <div className="bg-yellow-400 text-zinc-950 font-black text-xs px-2 py-1 rounded">$1</div>
+          <span className="font-black text-white hidden sm:inline">JustGimmeADolla</span>
+        </Link>
+        <Link href="/create" className="bg-yellow-400 hover:bg-yellow-300 text-zinc-950 font-black text-sm px-5 py-2 rounded-full transition-colors">
+          Share Your Story
+        </Link>
+      </div>
+    </header>
+  )
+}
+
+function Footer() {
+  return (
+    <footer className="border-t border-zinc-800 py-8 px-6 text-center">
+      <p className="text-zinc-700 text-sm">Real stories. Zero BS. · <Link href="/admin/login" className="hover:text-zinc-500 transition-colors">Admin</Link></p>
+    </footer>
   )
 }
