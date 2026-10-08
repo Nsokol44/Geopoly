@@ -1,5 +1,7 @@
 import Link from 'next/link'
 import { createAdminClient } from '@/lib/supabase-server'
+import { DailyLoop } from '@/components/daily/DailyLoop'
+import { StoryOfTheDay } from '@/components/daily/StoryOfTheDay'
 import type { Story } from '@/types'
 
 export const revalidate = 60
@@ -48,8 +50,11 @@ export default async function HomePage() {
         </div>
       </section>
 
+      <DailyLoop />
+      <StoryOfTheDay stories={stories} />
+
       {/* Feed */}
-      <section className="max-w-6xl mx-auto px-6 py-16">
+      <section id="latest" className="max-w-6xl mx-auto px-6 py-16">
         <h2 className="font-black text-2xl text-white mb-8">Latest Stories</h2>
         {stories.length === 0 ? (
           <div className="text-center py-20">

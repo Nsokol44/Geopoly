@@ -2,6 +2,8 @@ import { notFound } from 'next/navigation'
 import Link from 'next/link'
 import { createAdminClient } from '@/lib/supabase-server'
 import { TipSection } from './TipSection'
+import { DailyTracker } from '@/components/daily/DailyTracker'
+import { StoryReactions } from '@/components/stories/StoryReactions'
 import type { Story } from '@/types'
 
 export const dynamic = 'force-dynamic'
@@ -22,6 +24,7 @@ export default async function StoryPage({ params }: { params: Promise<{ id: stri
 
   return (
     <div className="min-h-screen bg-zinc-950">
+      <DailyTracker storyId={story.id} />
       <header className="sticky top-0 z-50 bg-zinc-950/90 backdrop-blur border-b border-zinc-800">
         <div className="max-w-2xl mx-auto px-6 h-16 flex items-center justify-between">
           <Link href="/" className="flex items-center gap-2">
@@ -66,7 +69,11 @@ export default async function StoryPage({ params }: { params: Promise<{ id: stri
           </div>
         )}
 
-        <TipSection storyId={story.id} authorName={story.author_name} tipCount={story.tip_count} tipTotal={story.tip_total} />
+        <StoryReactions storyId={story.id} />
+
+        <div className="mt-8">
+          <TipSection storyId={story.id} authorName={story.author_name} tipCount={story.tip_count} tipTotal={story.tip_total} />
+        </div>
       </main>
     </div>
   )

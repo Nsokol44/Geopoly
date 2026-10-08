@@ -4,6 +4,7 @@
 import { useState, useEffect } from 'react'
 import type { ReactionType } from '@/types'
 import { REACTION_LABELS } from '@/types'
+import { recordReact } from '@/lib/daily-client'
 
 interface Props {
   storyId: string
@@ -57,11 +58,13 @@ export function StoryReactions({ storyId }: Props) {
     }))
 
     try {
-      await fetch('/api/reactions', {
+      const res = await fetch('/api/reactions', {
         method,
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ story_id: storyId, reaction, fingerprint }),
       })
+      if (!res.ok) throw new Error('reaction failed')
+      if (!isRemoving) recordReact()
     } catch {
       // Revert on failure
       setMyReactions(prev => {
@@ -81,8 +84,8 @@ export function StoryReactions({ storyId }: Props) {
   const reactions: ReactionType[] = ['inspired', 'seen_this', 'urgent']
 
   return (
-    <div className="border-t border-ink-800 pt-6 mt-6">
-      <p className="text-ink-500 text-xs font-mono uppercase tracking-wider mb-4">How does this story make you feel?</p>
+    <div className="border-t border-zinc-800 pt-6 mt-6">
+      <p className="text-zinc-500 text-xs font-mono uppercase tracking-wider mb-4">How does this story make you feel?</p>
       <div className="flex flex-wrap gap-3">
         {reactions.map(r => {
           const { emoji, label } = REACTION_LABELS[r]
@@ -95,15 +98,15 @@ export function StoryReactions({ storyId }: Props) {
               disabled={loading === r}
               className={`flex items-center gap-2 px-4 py-2.5 rounded-full border text-sm font-medium transition-all
                 ${active
-                  ? 'bg-brand-600 border-brand-500 text-white scale-105'
-                  : 'bg-ink-900 border-ink-700 text-ink-300 hover:border-ink-500 hover:text-ink-100'
+                  ? 'bg-yellow-400 border-yellow-300 text-zinc-950 scale-105 font-black'
+                  : 'bg-zinc-900 border-zinc-700 text-zinc-300 hover:border-zinc-500 hover:text-white'
                 }`}
             >
               <span className="text-base">{emoji}</span>
               <span>{label}</span>
               {count > 0 && (
                 <span className={`text-xs px-1.5 py-0.5 rounded-full font-mono
-                  ${active ? 'bg-brand-700 text-brand-200' : 'bg-ink-800 text-ink-400'}`}>
+                  ${active ? 'bg-zinc-950/15 text-zinc-900' : 'bg-zinc-800 text-zinc-400'}`}>
                   {count}
                 </span>
               )}
