@@ -1,19 +1,13 @@
 'use client'
 // components/home/StoriesExplorer.tsx
-// The story feed with a location filter and the map. Pick a
-// country and both the pins and the cards narrow to stories
-// from there. Voice stories carry no location — they live
-// under "No location" and always show under "Everywhere".
+// The story feed with a location filter. Pick a country and
+// the cards narrow to stories from there. Voice stories
+// carry no location — they live under "No location" and
+// always show under "Everywhere". (The map itself is the
+// full-screen MapSection above the daily drop.)
 import { useMemo, useState } from 'react'
-import dynamic from 'next/dynamic'
 import Link from 'next/link'
 import type { Story } from '@/types'
-import { hasLocation } from '@/components/map/StoriesMap'
-
-const StoriesMap = dynamic(() => import('@/components/map/StoriesMap'), {
-  ssr: false,
-  loading: () => <div className="h-[340px] md:h-[420px] w-full rounded-2xl border border-zinc-800 bg-zinc-900 animate-pulse" />,
-})
 
 const ALL = 'ALL'
 const NONE = '__none'
@@ -50,7 +44,6 @@ export function StoriesExplorer({ stories }: { stories: Story[] }) {
     return stories.filter(s => countryOf(s)?.key === filter)
   }, [stories, filter])
 
-  const located = useMemo(() => visible.filter(hasLocation), [visible])
   const activeLabel = filter === ALL ? null : countries.find(c => c.key === filter)?.label
 
   return (
@@ -71,12 +64,6 @@ export function StoriesExplorer({ stories }: { stories: Story[] }) {
           ))}
         </div>
       )}
-
-      {located.length > 0
-        ? <div className="mb-10"><StoriesMap stories={visible} /></div>
-        : filter !== ALL
-          ? <div className="mb-10 border border-zinc-800 rounded-2xl py-10 text-center text-zinc-600 text-sm">No map pins for this filter yet.</div>
-          : null}
 
       {visible.length === 0 ? (
         <div className="text-center py-20">

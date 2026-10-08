@@ -137,13 +137,14 @@ export function MapSection({ stories, countryStats }: Props) {
         preferCanvas: true,
       }).setView([20, 10], 2)
 
-      // CARTO dark tiles — no API key required
+      // Dark tiles — CARTO's keyless basemaps now serve an
+      // "API KEY REQUIRED" watermark tile, so the map uses
+      // Esri's World Dark Gray canvas instead (free, no key).
       L.tileLayer(
-        'https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png',
+        'https://server.arcgisonline.com/ArcGIS/rest/services/Canvas/World_Dark_Gray_Base/MapServer/tile/{z}/{y}/{x}',
         {
-          attribution: '© <a href="https://carto.com/">CARTO</a> © <a href="https://www.openstreetmap.org/copyright">OSM</a>',
-          subdomains: 'abcd',
-          maxZoom: 19,
+          attribution: 'Tiles © Esri — Source: Esri, © <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
+          maxZoom: 16,
         }
       ).addTo(map)
 

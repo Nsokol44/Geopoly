@@ -4,6 +4,7 @@ import { createAdminClient } from '@/lib/supabase-server'
 import { TipSection } from './TipSection'
 import { DailyTracker } from '@/components/daily/DailyTracker'
 import { StoryReactions } from '@/components/stories/StoryReactions'
+import { coverSrc } from '@/lib/media'
 import type { Story } from '@/types'
 
 export const dynamic = 'force-dynamic'
@@ -18,9 +19,10 @@ export default async function StoryPage({ params }: { params: Promise<{ id: stri
   // increment views
   db.rpc('increment_view_count', { story_id: id }).then(() => {})
 
-  const audioUrl = story.audio_upload_path
-    ? `${process.env.NEXT_PUBLIC_SUPABASE_URL}/storage/v1/object/public/story-media/${story.audio_upload_path}`
-    : null
+  // Streamed through our own route — the storage bucket is
+  // private, so direct public URLs return 400 and won't play.
+  const audioUrl = story.audio_upload_path ? `/api/audio/${story.id}` : null
+  const cover = coverSrc(story)
 
   return (
     <div className="min-h-screen bg-zinc-950">
@@ -43,8 +45,8 @@ export default async function StoryPage({ params }: { params: Promise<{ id: stri
           <span>{story.view_count} views</span>
         </div>
 
-        {story.cover_image_url && (
-          <img src={story.cover_image_url} alt={story.title} className="w-full h-64 object-cover rounded-2xl mb-8" />
+        {cover && (
+          <img src={cover} alt={story.title} className="w-full h-64 object-cover rounded-2xl mb-8" />
         )}
 
         {audioUrl && (

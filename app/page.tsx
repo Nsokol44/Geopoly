@@ -3,9 +3,21 @@ import { createAdminClient } from '@/lib/supabase-server'
 import { DailyLoop } from '@/components/daily/DailyLoop'
 import { StoryOfTheDay } from '@/components/daily/StoryOfTheDay'
 import { StoriesExplorer } from '@/components/home/StoriesExplorer'
-import type { Story } from '@/types'
+import { MapSection } from '@/components/map/MapSection'
+import { coverSrc } from '@/lib/media'
+import type { Story, MapStory } from '@/types'
 
 export const revalidate = 60
+
+function hasCoords(s: Story): boolean {
+  const lat = s.latitude, lng = s.longitude
+  return (
+    typeof lat === 'number' && typeof lng === 'number' &&
+    Number.isFinite(lat) && Number.isFinite(lng) &&
+    lat >= -90 && lat <= 90 && lng >= -180 && lng <= 180 &&
+    !(lat === 0 && lng === 0)
+  )
+}
 
 async function getData() {
   const db = createAdminClient()
@@ -15,11 +27,27 @@ async function getData() {
     db.from('tips').select('net_amount').eq('status', 'completed'),
   ])
   const totalPaid = (tips ?? []).reduce((s, t) => s + Number(t.net_amount), 0)
-  return { stories: (stories ?? []) as Story[], storyCount: count ?? 0, totalPaid }
+  // Covers are served through /api/cover/[id] — the storage
+  // bucket is private, so stored public URLs don't load.
+  const list = ((stories ?? []) as Story[]).map(s => ({ ...s, cover_image_url: coverSrc(s) }))
+  const mapStories: MapStory[] = list.filter(hasCoords).map(s => ({
+    id: s.id,
+    title: s.title,
+    excerpt: s.transcript && s.transcript !== '[Voice recording — pending transcription]' ? s.transcript.slice(0, 160) : '',
+    category: (s.category ?? 'uncategorized') as MapStory['category'],
+    latitude: s.latitude,
+    longitude: s.longitude,
+    location_name: s.location_name ?? '',
+    country_name: s.country_name ?? '',
+    cover_image_url: s.cover_image_url,
+    author_name: s.author_name,
+    created_at: s.created_at,
+  }))
+  return { stories: list, mapStories, storyCount: count ?? 0, totalPaid }
 }
 
 export default async function HomePage() {
-  const { stories, storyCount, totalPaid } = await getData()
+  const { stories, mapStories, storyCount, totalPaid } = await getData()
 
   return (
     <div className="min-h-screen bg-zinc-950">
@@ -49,6 +77,11 @@ export default async function HomePage() {
             Share Your Story →
           </Link>
         </div>
+      </section>
+
+      {/* The atlas — full screen, above the daily drop */}
+      <section id="map-hero" className="relative w-full" style={{ height: '100vh', minHeight: 600 }}>
+        <MapSection stories={mapStories} />
       </section>
 
       <DailyLoop />
