@@ -2,6 +2,7 @@ import Link from 'next/link'
 import { createAdminClient } from '@/lib/supabase-server'
 import { DailyLoop } from '@/components/daily/DailyLoop'
 import { StoryOfTheDay } from '@/components/daily/StoryOfTheDay'
+import { StoriesExplorer } from '@/components/home/StoriesExplorer'
 import type { Story } from '@/types'
 
 export const revalidate = 60
@@ -53,52 +54,10 @@ export default async function HomePage() {
       <DailyLoop />
       <StoryOfTheDay stories={stories} />
 
-      {/* Feed */}
-      <section id="latest" className="max-w-6xl mx-auto px-6 py-16">
-        <h2 className="font-black text-2xl text-white mb-8">Latest Stories</h2>
-        {stories.length === 0 ? (
-          <div className="text-center py-20">
-            <p className="text-zinc-500 text-lg mb-4">No stories yet. Be the first.</p>
-            <Link href="/create" className="text-yellow-400 font-black hover:text-yellow-300">Share yours →</Link>
-          </div>
-        ) : (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {stories.map(s => <StoryCard key={s.id} story={s} />)}
-          </div>
-        )}
-      </section>
+      {/* Feed + map, filterable by country */}
+      <StoriesExplorer stories={stories} />
       <Footer />
     </div>
-  )
-}
-
-function StoryCard({ story }: { story: Story }) {
-  return (
-    <Link href={`/story/${story.id}`}
-      className="group block bg-zinc-900 border border-zinc-800 hover:border-yellow-400/50 rounded-2xl overflow-hidden transition-all hover:scale-[1.01]">
-      <div className="h-40 bg-zinc-800 flex items-center justify-center overflow-hidden relative">
-        {story.cover_image_url
-          ? <img src={story.cover_image_url} alt={story.title} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" />
-          : <div className="flex flex-col items-center gap-2">
-              <div className="w-14 h-14 rounded-full bg-yellow-400/10 border border-yellow-400/30 flex items-center justify-center">
-                <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#facc15" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 2a3 3 0 0 0-3 3v7a3 3 0 0 0 6 0V5a3 3 0 0 0-3-3Z"/><path d="M19 10v2a7 7 0 0 1-14 0v-2"/><line x1="12" x2="12" y1="19" y2="22"/></svg>
-              </div>
-              <span className="text-zinc-600 text-xs">Voice Story</span>
-            </div>
-        }
-      </div>
-      <div className="p-5">
-        <h3 className="font-black text-white text-lg leading-tight mb-1 line-clamp-2 group-hover:text-yellow-400 transition-colors">{story.title}</h3>
-        <p className="text-zinc-500 text-sm mb-3">by {story.author_name}</p>
-        {story.transcript && <p className="text-zinc-600 text-sm line-clamp-2">{story.transcript}</p>}
-        <div className="flex items-center justify-between mt-4 pt-4 border-t border-zinc-800">
-          <span className="text-yellow-400 font-black text-sm">
-            {story.tip_count > 0 ? `${story.tip_count} tip${story.tip_count !== 1 ? 's' : ''} · $${Number(story.tip_total).toFixed(0)}` : '💛 Send a dolla'}
-          </span>
-          <span className="text-zinc-700 text-xs">{new Date(story.created_at).toLocaleDateString()}</span>
-        </div>
-      </div>
-    </Link>
   )
 }
 
