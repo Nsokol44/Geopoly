@@ -13,7 +13,8 @@ export async function POST(req: Request) {
     if (!admin) return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
 
     const { id, status, featured } = await req.json()
-    if (!id || !['approved', 'rejected'].includes(status)) return NextResponse.json({ error: 'Invalid' }, { status: 400 })
+    // 'pending' = unpublish: a live story goes back to the queue.
+    if (!id || !['approved', 'rejected', 'pending'].includes(status)) return NextResponse.json({ error: 'Invalid' }, { status: 400 })
 
     const { error } = await db.from('stories').update({ status, featured: status === 'approved' ? Boolean(featured) : false }).eq('id', id)
     if (error) return NextResponse.json({ error: error.message }, { status: 500 })

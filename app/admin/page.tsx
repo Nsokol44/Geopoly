@@ -1,6 +1,7 @@
 import { redirect } from 'next/navigation'
 import { createServerSupabaseClient, createAdminClient } from '@/lib/supabase-server'
 import { AdminQueue } from './AdminQueue'
+import { AdminPublished } from './AdminPublished'
 import type { Story } from '@/types'
 
 export const dynamic = 'force-dynamic'
@@ -15,6 +16,7 @@ export default async function AdminPage() {
   if (!admin) redirect('/admin/login')
 
   const { data: pending } = await db.from('stories').select('*').eq('status', 'pending').order('created_at', { ascending: true })
+  const { data: published } = await db.from('stories').select('*').eq('status', 'approved').order('created_at', { ascending: false }).limit(200)
 
   return (
     <div className="min-h-screen bg-zinc-950">
@@ -31,6 +33,7 @@ export default async function AdminPage() {
         <h1 className="font-black text-4xl text-white mb-2">Review Queue</h1>
         <p className="text-zinc-500 mb-8">{pending?.length ?? 0} {pending?.length === 1 ? 'story' : 'stories'} awaiting review</p>
         <AdminQueue stories={(pending ?? []) as Story[]} />
+        <AdminPublished stories={(published ?? []) as Story[]} />
       </main>
     </div>
   )
