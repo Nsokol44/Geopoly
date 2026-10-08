@@ -1,14 +1,72 @@
 'use client'
 import { useState } from 'react'
+import { useRouter } from 'next/navigation'
 import type { Story } from '@/types'
+import { needsTranscript } from '@/lib/transcribe'
 
 export function AdminQueue({ stories: init }: { stories: Story[] }) {
+  const router = useRouter()
   const [stories, setStories] = useState(init)
   const [expanded, setExpanded] = useState<string | null>(null)
   const [transcripts, setTranscripts] = useState<Record<string, string>>({})
   const [saving, setSaving] = useState<Record<string, boolean>>({})
   const [saved, setSaved] = useState<Record<string, boolean>>({})
   const [loading, setLoading] = useState<Record<string, boolean>>({})
+  const [transcribing, setTranscribing] = useState<Record<string, boolean>>({})
+  const [transcribeMsg, setTranscribeMsg] = useState<Record<string, string>>({})
+  const [allBusy, setAllBusy] = useState(false)
+  const [allMsg, setAllMsg] = useState('')
+  const [errors, setErrors] = useState<Record<string, string>>({})
+
+  const transcribe = async (story: Story) => {
+    setTranscribing(t => ({ ...t, [story.id]: true }))
+    setTranscribeMsg(m => ({ ...m, [story.id]: '' }))
+    try {
+      const res = await fetch('/api/admin/transcribe', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id: story.id }) })
+      const json = await res.json().catch(() => ({}))
+      if (!res.ok) throw new Error(json.error ?? 'Transcription failed')
+      setTranscripts(t => ({ ...t, [story.id]: json.transcript }))
+      setStories(list => list.map(x => x.id === story.id ? { ...x, transcript: json.transcript } : x))
+      setTranscribeMsg(m => ({ ...m, [story.id]: '✓ Transcribed — review the text, then Save.' }))
+    } catch (e: any) {
+      setTranscribeMsg(m => ({ ...m, [story.id]: e?.message ?? 'Transcription failed' }))
+    } finally {
+      setTranscribing(t => ({ ...t, [story.id]: false }))
+    }
+  }
+
+  const missingCount = stories.filter(s => needsTranscript(s)).length
+
+  const transcribeAll = async () => {
+    setAllBusy(true); setAllMsg('')
+    try {
+      const res = await fetch('/api/admin/transcribe', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ all: true }) })
+      const json = await res.json().catch(() => ({}))
+      if (!res.ok) throw new Error(json.error ?? 'Transcription failed')
+      setAllMsg(`✓ Transcribed ${json.transcribed} of ${json.attempted} stories${json.failures?.length ? ` · ${json.failures.length} failed` : ''}`)
+      router.refresh()
+    } catch (e: any) {
+      setAllMsg(e?.message ?? 'Transcription failed')
+    } finally {
+      setAllBusy(false)
+    }
+  }
+
+  const deleteStory = async (story: Story) => {
+    if (!window.confirm(`Delete "${story.title}" permanently? This removes the story and its audio. This cannot be undone.`)) return
+    setLoading(l => ({ ...l, [story.id]: true }))
+    setErrors(e => ({ ...e, [story.id]: '' }))
+    try {
+      const res = await fetch(`/api/admin/story?id=${encodeURIComponent(story.id)}`, { method: 'DELETE' })
+      const json = await res.json().catch(() => ({}))
+      if (!res.ok) throw new Error(json.error ?? 'Delete failed')
+      setStories(s => s.filter(x => x.id !== story.id))
+    } catch (e: any) {
+      setErrors(er => ({ ...er, [story.id]: e?.message ?? 'Delete failed' }))
+    } finally {
+      setLoading(l => ({ ...l, [story.id]: false }))
+    }
+  }
 
   const review = async (id: string, status: 'approved' | 'rejected', featured = false) => {
     setLoading(l => ({ ...l, [id]: true }))
@@ -45,6 +103,18 @@ export function AdminQueue({ stories: init }: { stories: Story[] }) {
 
   return (
     <div className="space-y-4">
+      {missingCount > 0 && (
+        <div className="flex items-center gap-3 flex-wrap bg-zinc-900 border border-yellow-400/30 rounded-2xl px-5 py-4">
+          <p className="text-sm text-zinc-300 flex-1 min-w-[200px]">
+            <span className="font-black text-white">{missingCount} {missingCount === 1 ? 'story is' : 'stories are'}</span> missing {missingCount === 1 ? 'its' : 'their'} text.
+          </p>
+          <button onClick={transcribeAll} disabled={allBusy}
+            className="bg-yellow-400 hover:bg-yellow-300 disabled:opacity-40 text-zinc-950 text-xs font-black px-4 py-2 rounded-full transition-colors">
+            {allBusy ? 'Transcribing…' : '✨ Transcribe all'}
+          </button>
+          {allMsg && <p className="w-full text-xs text-zinc-400">{allMsg}</p>}
+        </div>
+      )}
       {stories.map(story => {
         const isExpanded = expanded === story.id
         const isVoice = !!story.audio_upload_path
@@ -81,13 +151,12 @@ export function AdminQueue({ stories: init }: { stories: Story[] }) {
                         ⬇️ Export Audio
                       </button>
                     </div>
-                    <div className="bg-yellow-400/5 border border-yellow-400/20 rounded-xl p-3 mb-3 text-xs text-zinc-400 leading-relaxed">
-                      <p className="font-black text-yellow-300 mb-1">📋 To transcribe:</p>
-                      <ol className="list-decimal list-inside space-y-0.5">
-                        <li>Export Audio → upload to <a href="https://claude.ai" target="_blank" rel="noreferrer" className="text-yellow-400 hover:underline">Claude.ai</a> or <a href="https://chat.openai.com" target="_blank" rel="noreferrer" className="text-yellow-400 hover:underline">ChatGPT</a></li>
-                        <li>Ask: "Please transcribe this audio accurately."</li>
-                        <li>Paste below and save</li>
-                      </ol>
+                    <div className="flex items-center gap-3 flex-wrap mb-3">
+                      <button onClick={() => transcribe(story)} disabled={transcribing[story.id]}
+                        className="bg-yellow-400 hover:bg-yellow-300 disabled:opacity-40 text-zinc-950 text-xs font-black px-4 py-2 rounded-full transition-colors">
+                        {transcribing[story.id] ? 'Transcribing…' : needsTranscript(story) ? '✨ Transcribe' : '✨ Re-transcribe'}
+                      </button>
+                      {transcribeMsg[story.id] && <p className="text-xs text-zinc-400">{transcribeMsg[story.id]}</p>}
                     </div>
                     <textarea value={transcriptText} onChange={e => setTranscripts(t => ({ ...t, [story.id]: e.target.value }))}
                       placeholder="Paste transcript here…" rows={5}
@@ -116,6 +185,10 @@ export function AdminQueue({ stories: init }: { stories: Story[] }) {
                 className="text-xs font-black text-red-400 hover:text-red-300 border border-red-900 hover:border-red-700 px-4 py-2 rounded-full transition-colors disabled:opacity-50">
                 ✕ Reject
               </button>
+              <button onClick={() => deleteStory(story)} disabled={loading[story.id]}
+                className="text-xs font-black text-zinc-500 hover:text-red-300 border border-zinc-800 hover:border-red-700 px-4 py-2 rounded-full transition-colors disabled:opacity-50">
+                Delete
+              </button>
               <button onClick={() => review(story.id, 'approved')} disabled={loading[story.id]}
                 className="text-xs font-black text-green-400 border border-green-900 hover:border-green-700 px-4 py-2 rounded-full transition-colors disabled:opacity-50">
                 ✓ Approve
@@ -125,6 +198,7 @@ export function AdminQueue({ stories: init }: { stories: Story[] }) {
                 ★ Approve & Feature
               </button>
             </div>
+            {errors[story.id] && <p className="text-red-400 text-xs px-5 py-3 border-t border-red-900/50 bg-red-950/20">{errors[story.id]}</p>}
           </div>
         )
       })}
