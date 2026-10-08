@@ -7,7 +7,7 @@ Real people. Real stories. If it moves you — send a dollar.
 ### 1. Supabase
 - Create project at supabase.com
 - Run `schema.sql` in SQL Editor
-- Create storage bucket named `story-media` (public: YES)
+- Then run `supabase/migrations/004_enable_row_level_security.sql` in SQL Editor — this enables **Row Level Security on every table** (stories, tips, admins, reactions + the `story-media` storage policies) and creates the `story-media` bucket if it is missing. Existing projects only need this one file; it is safe to re-run. See [RLS.md](RLS.md) for who can do what and how to verify it.
 - Go to Authentication → Users → Add User → create your admin account
 - Run: `INSERT INTO admins (email) VALUES ('your@email.com');`
 
