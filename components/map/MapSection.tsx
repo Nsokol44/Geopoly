@@ -16,6 +16,33 @@ interface Props {
 type ViewMode = 'points' | 'heatmap'
 
 const PING_CSS = `
+@keyframes cs-ping {
+  0%   { transform: scale(1);   opacity: 0.9; }
+  70%  { transform: scale(3.5); opacity: 0; }
+  100% { transform: scale(3.5); opacity: 0; }
+}
+@keyframes cs-pulse {
+  0%, 100% { opacity: 1; }
+  50%       { opacity: 0.5; }
+}
+.cs-wrap {
+  position: relative; width: 14px; height: 14px; cursor: pointer;
+}
+.cs-ring {
+  position: absolute; inset: -4px; border-radius: 50%;
+  border: 2px solid var(--mc);
+  animation: cs-ping 2.5s ease-out infinite;
+  pointer-events: none;
+}
+.cs-ring-2 { animation-delay: 0.9s; }
+.cs-dot {
+  position: absolute; inset: 0; border-radius: 50%;
+  background: var(--mc);
+  box-shadow: 0 0 10px 2px var(--mc);
+  animation: cs-pulse 3s ease-in-out infinite;
+  transition: transform 0.15s ease;
+}
+.cs-wrap:hover .cs-dot { transform: scale(1.6); }
 .leaflet-control-zoom a {
   background: rgba(15,23,42,0.92) !important;
   border-color: #1e293b !important;
@@ -150,8 +177,21 @@ export function MapSection({ stories, countryStats }: Props) {
     cluster.clearLayers()
 
     liveStories.forEach((story) => {
-      // Plain Leaflet pin (default icon, URLs fixed at init).
-      const marker = L.marker([story.latitude, story.longitude])
+      // The pulsing dot — one dolla-yellow for every story
+      // (dots used to be colored per category; categories
+      // are gone, the dots stay).
+      const icon = L.divIcon({
+        html: `<div class="cs-wrap" style="--mc:#facc15">
+          <div class="cs-ring"></div>
+          <div class="cs-ring cs-ring-2"></div>
+          <div class="cs-dot" style="animation-delay:${(Math.random()*3).toFixed(2)}s"></div>
+        </div>`,
+        className: '',
+        iconSize: [14, 14],
+        iconAnchor: [7, 7],
+      })
+
+      const marker = L.marker([story.latitude, story.longitude], { icon })
       marker.on('click', () => {
         setSelectedStory(story)
         mapRef.current.flyTo(
