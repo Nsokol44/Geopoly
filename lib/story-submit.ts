@@ -26,6 +26,13 @@ export interface StoryDraft {
   author_email?: string | null
   audio_upload_path?: string | null
   cover_image_url?: string | null
+  // Country-level location only (product rule): when the
+  // teller picks a country, the submit route resolves its
+  // centroid and passes it here as latitude/longitude.
+  country_code?: string | null
+  country_name?: string | null
+  latitude?: number | null
+  longitude?: number | null
 }
 
 type Row = Record<string, unknown>
@@ -71,6 +78,12 @@ export async function insertStory(db: AdminDb, draft: StoryDraft): Promise<strin
     // Present in the migration-001 schema and useful everywhere it
     // exists; stripped automatically where it does not.
     excerpt: draft.title.slice(0, 160),
+    // Real country data when the teller provided it — written on
+    // the first attempt, so no placeholder geo is stored.
+    ...(draft.country_code ? { country_code: draft.country_code } : {}),
+    ...(draft.country_name ? { country_name: draft.country_name } : {}),
+    ...(typeof draft.latitude === 'number' ? { latitude: draft.latitude } : {}),
+    ...(typeof draft.longitude === 'number' ? { longitude: draft.longitude } : {}),
   }
 
   const filled = new Set<string>()

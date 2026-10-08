@@ -2,6 +2,8 @@
 import { useState, useRef } from 'react'
 import Link from 'next/link'
 import { createClient } from '@/lib/supabase'
+import { COUNTRIES } from '@/lib/countries'
+import { convertToMp3 } from '@/lib/convert-client'
 
 type Stage = 'record' | 'details' | 'submitting' | 'success'
 
@@ -11,6 +13,8 @@ export default function CreatePage() {
   const [title, setTitle] = useState('')
   const [name, setName] = useState('')
   const [email, setEmail] = useState('')
+  const [country, setCountry] = useState('')
+  const [converting, setConverting] = useState(false)
   const [image, setImage] = useState<{ file: File; preview: string } | null>(null)
   const [error, setError] = useState('')
   const [recording, setRecording] = useState(false)
@@ -55,9 +59,23 @@ export default function CreatePage() {
       let img_url: string | null = null
 
       if (audio) {
-        const ext = audio.mime.includes('mp4') ? 'mp4' : 'webm'
+        // Convert to MP3 in the browser before upload — MP3
+        // plays on every device; WebM/Opus doesn't (Safari).
+        // Best-effort: if conversion fails, upload the original.
+        let blob = audio.blob
+        let ext = audio.mime.includes('mp4') ? 'mp4' : 'webm'
+        let contentType = audio.mime
+        if (!audio.mime.includes('mpeg')) {
+          setConverting(true)
+          try {
+            blob = await convertToMp3(audio.blob, ext)
+            ext = 'mp3'
+            contentType = 'audio/mpeg'
+          } catch { /* keep the original recording */ }
+          setConverting(false)
+        }
         const path = `audio/${Date.now()}.${ext}`
-        const { error: e } = await db.storage.from('story-media').upload(path, audio.blob, { contentType: audio.mime })
+        const { error: e } = await db.storage.from('story-media').upload(path, blob, { contentType })
         if (e) throw new Error('Audio upload failed')
         audio_path = path
       }
@@ -72,7 +90,7 @@ export default function CreatePage() {
       const res = await fetch('/api/submit', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ title, author_name: name, author_email: email, audio_upload_path: audio_path, cover_image_url: img_url }),
+        body: JSON.stringify({ title, author_name: name, author_email: email, audio_upload_path: audio_path, cover_image_url: img_url, country_code: country || null }),
       })
       if (!res.ok) throw new Error((await res.json()).error)
       setStage('success')
@@ -191,6 +209,16 @@ export default function CreatePage() {
                 </div>
               ))}
 
+              <div className="mb-5">
+                <label className="block text-sm font-black text-zinc-300 mb-2">Your Country — optional</label>
+                <select value={country} onChange={e => setCountry(e.target.value)}
+                  className="w-full bg-zinc-950 border border-zinc-700 focus:border-yellow-400 rounded-xl px-4 py-4 text-base text-white outline-none transition-colors">
+                  <option value="">Choose your country…</option>
+                  {COUNTRIES.map(c => <option key={c.code} value={c.code}>{c.name}</option>)}
+                </select>
+                <p className="text-zinc-600 text-xs mt-2">Country only — your story gets a pin at the center of your country on the map. Nothing more precise is ever collected.</p>
+              </div>
+
               <div className="mb-6">
                 <label className="block text-sm font-black text-zinc-300 mb-2">Cover Photo — optional</label>
                 {image ? (
@@ -217,7 +245,7 @@ export default function CreatePage() {
                 </button>
                 <button onClick={submit} disabled={!title.trim() || !name.trim() || stage === 'submitting'}
                   className="flex-1 flex items-center justify-center gap-2 bg-yellow-400 hover:bg-yellow-300 disabled:opacity-40 text-zinc-950 font-black text-lg py-4 rounded-full transition-colors">
-                  {stage === 'submitting' ? 'Submitting…' : '✅ Submit My Story'}
+                  {stage === 'submitting' ? (converting ? 'Converting to MP3…' : 'Submitting…') : '✅ Submit My Story'}
                 </button>
               </div>
             </div>

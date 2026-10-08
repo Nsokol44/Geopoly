@@ -8,6 +8,7 @@ import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import type { Story } from '@/types'
 import { needsTranscript } from '@/lib/transcribe'
+import { convertStoryAudio, isMp3Name } from '@/lib/convert-client'
 
 export function AdminPublished({ stories: init }: { stories: Story[] }) {
   const router = useRouter()
@@ -15,6 +16,21 @@ export function AdminPublished({ stories: init }: { stories: Story[] }) {
   const [busy, setBusy] = useState<Record<string, boolean>>({})
   const [errors, setErrors] = useState<Record<string, string>>({})
   const [transcribing, setTranscribing] = useState<Record<string, boolean>>({})
+  const [converting, setConverting] = useState<Record<string, boolean>>({})
+
+  const convert = async (story: Story) => {
+    if (!story.audio_upload_path) return
+    setConverting(c => ({ ...c, [story.id]: true }))
+    setErrors(e => ({ ...e, [story.id]: '' }))
+    try {
+      const path = await convertStoryAudio(story.id, story.audio_upload_path)
+      setStories(list => list.map(x => x.id === story.id ? { ...x, audio_upload_path: path } : x))
+    } catch (e: any) {
+      setErrors(er => ({ ...er, [story.id]: e?.message ?? 'Conversion failed' }))
+    } finally {
+      setConverting(c => ({ ...c, [story.id]: false }))
+    }
+  }
 
   const transcribe = async (story: Story) => {
     setTranscribing(t => ({ ...t, [story.id]: true }))
@@ -73,6 +89,12 @@ export function AdminPublished({ stories: init }: { stories: Story[] }) {
                 <button onClick={() => transcribe(story)} disabled={transcribing[story.id]}
                   className="text-xs font-black bg-yellow-400 hover:bg-yellow-300 disabled:opacity-40 text-zinc-950 px-4 py-2 rounded-full transition-colors">
                   {transcribing[story.id] ? 'Transcribing…' : '✨ Transcribe'}
+                </button>
+              )}
+              {story.audio_upload_path && !isMp3Name(story.audio_upload_path) && (
+                <button onClick={() => convert(story)} disabled={converting[story.id]}
+                  className="text-xs font-black border border-zinc-700 hover:border-yellow-400 disabled:opacity-40 text-zinc-200 px-4 py-2 rounded-full transition-colors">
+                  {converting[story.id] ? 'Converting…' : '🎵 To MP3'}
                 </button>
               )}
               <a href={`/story/${story.id}`} target="_blank" rel="noreferrer" className="text-zinc-500 hover:text-zinc-300 text-xs font-black transition-colors">👁 View</a>

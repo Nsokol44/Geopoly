@@ -3,6 +3,7 @@ import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import type { Story } from '@/types'
 import { needsTranscript } from '@/lib/transcribe'
+import { convertStoryAudio, isMp3Name } from '@/lib/convert-client'
 
 export function AdminQueue({ stories: init }: { stories: Story[] }) {
   const router = useRouter()
@@ -14,6 +15,23 @@ export function AdminQueue({ stories: init }: { stories: Story[] }) {
   const [loading, setLoading] = useState<Record<string, boolean>>({})
   const [transcribing, setTranscribing] = useState<Record<string, boolean>>({})
   const [transcribeMsg, setTranscribeMsg] = useState<Record<string, string>>({})
+  const [converting, setConverting] = useState<Record<string, boolean>>({})
+  const [convertMsg, setConvertMsg] = useState<Record<string, string>>({})
+
+  const convert = async (story: Story) => {
+    if (!story.audio_upload_path) return
+    setConverting(c => ({ ...c, [story.id]: true }))
+    setConvertMsg(m => ({ ...m, [story.id]: '' }))
+    try {
+      const path = await convertStoryAudio(story.id, story.audio_upload_path)
+      setStories(list => list.map(x => x.id === story.id ? { ...x, audio_upload_path: path } : x))
+      setConvertMsg(m => ({ ...m, [story.id]: '✓ Converted to MP3 — plays everywhere now.' }))
+    } catch (e: any) {
+      setConvertMsg(m => ({ ...m, [story.id]: e?.message ?? 'Conversion failed' }))
+    } finally {
+      setConverting(c => ({ ...c, [story.id]: false }))
+    }
+  }
   const [allBusy, setAllBusy] = useState(false)
   const [allMsg, setAllMsg] = useState('')
   const [errors, setErrors] = useState<Record<string, string>>({})
@@ -156,7 +174,14 @@ export function AdminQueue({ stories: init }: { stories: Story[] }) {
                         className="bg-yellow-400 hover:bg-yellow-300 disabled:opacity-40 text-zinc-950 text-xs font-black px-4 py-2 rounded-full transition-colors">
                         {transcribing[story.id] ? 'Transcribing…' : needsTranscript(story) ? '✨ Transcribe' : '✨ Re-transcribe'}
                       </button>
+                      {!isMp3Name(story.audio_upload_path) && (
+                        <button onClick={() => convert(story)} disabled={converting[story.id]}
+                          className="border border-zinc-700 hover:border-yellow-400 disabled:opacity-40 text-zinc-200 text-xs font-black px-4 py-2 rounded-full transition-colors">
+                          {converting[story.id] ? 'Converting…' : '🎵 Convert to MP3'}
+                        </button>
+                      )}
                       {transcribeMsg[story.id] && <p className="text-xs text-zinc-400">{transcribeMsg[story.id]}</p>}
+                      {convertMsg[story.id] && <p className="text-xs text-zinc-400">{convertMsg[story.id]}</p>}
                     </div>
                     <textarea value={transcriptText} onChange={e => setTranscripts(t => ({ ...t, [story.id]: e.target.value }))}
                       placeholder="Paste transcript here…" rows={5}
