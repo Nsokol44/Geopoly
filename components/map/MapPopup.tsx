@@ -2,8 +2,7 @@
 // components/map/MapPopup.tsx
 import { X, ArrowRight } from 'lucide-react'
 import Image from 'next/image'
-import type { MapStory, StoryCategory } from '@/types'
-import { CATEGORY_COLORS, CATEGORY_LABELS } from '@/lib/utils'
+import type { MapStory } from '@/types'
 
 interface Props {
   story: MapStory
@@ -11,11 +10,9 @@ interface Props {
 }
 
 export function MapPopup({ story, onClose }: Props) {
-  const color = CATEGORY_COLORS[story.category as StoryCategory] ?? '#F59E0B'
-  const label = CATEGORY_LABELS[story.category as StoryCategory] ?? story.category
 
   return (
-    <div className="absolute bottom-8 right-4 z-30 w-80 max-w-[calc(100vw-2rem)]">
+    <div className="absolute bottom-8 right-4 z-30 w-80 max-w-[calc(100vw-2rem)] pointer-events-auto">
       <div className="bg-ink-900/95 backdrop-blur-md border border-ink-700 rounded-sm shadow-2xl overflow-hidden animate-fade-up">
         {/* Cover image */}
         {story.cover_image_url && (
@@ -30,17 +27,11 @@ export function MapPopup({ story, onClose }: Props) {
         )}
 
         <div className="p-4">
-          {/* Category badge */}
-          <div className="flex items-center justify-between mb-2">
-            <span
-              className="text-[10px] font-mono tracking-[0.2em] uppercase px-2 py-0.5 rounded-sm border"
-              style={{ color, background: `${color}18`, borderColor: `${color}44` }}
-            >
-              {label}
-            </span>
+          <div className="flex items-start justify-end mb-1">
             <button
               onClick={onClose}
               className="text-ink-500 hover:text-ink-200 transition-colors"
+              aria-label="Close"
             >
               <X size={16} />
             </button>
@@ -52,9 +43,11 @@ export function MapPopup({ story, onClose }: Props) {
           </h3>
 
           {/* Location */}
-          <p className="text-ink-400 text-xs mb-3 font-mono">
-            📍 {story.location_name}
-          </p>
+          {(story.location_name || story.country_name) && (
+            <p className="text-ink-400 text-xs mb-3 font-mono">
+              📍 {[story.location_name, story.country_name].filter(Boolean).join(', ')}
+            </p>
+          )}
 
           {/* Excerpt */}
           <p className="text-ink-300 text-sm leading-relaxed line-clamp-3 mb-4">

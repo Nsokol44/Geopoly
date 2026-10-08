@@ -4,8 +4,7 @@
 // Mirrors the Geopoly WordPress theme approach exactly — no npm imports of L.
 
 import { useRef, useEffect, useState, useCallback } from 'react'
-import type { MapStory, StoryCategory, CountryStats } from '@/types'
-import { CATEGORY_COLORS } from '@/lib/utils'
+import type { MapStory, CountryStats } from '@/types'
 import { MapControls } from './MapControls'
 import { MapPopup } from './MapPopup'
 
@@ -17,33 +16,6 @@ interface Props {
 type ViewMode = 'points' | 'heatmap'
 
 const PING_CSS = `
-@keyframes cs-ping {
-  0%   { transform: scale(1);   opacity: 0.9; }
-  70%  { transform: scale(3.5); opacity: 0; }
-  100% { transform: scale(3.5); opacity: 0; }
-}
-@keyframes cs-pulse {
-  0%, 100% { opacity: 1; }
-  50%       { opacity: 0.5; }
-}
-.cs-wrap {
-  position: relative; width: 14px; height: 14px; cursor: pointer;
-}
-.cs-ring {
-  position: absolute; inset: -4px; border-radius: 50%;
-  border: 2px solid var(--mc);
-  animation: cs-ping 2.5s ease-out infinite;
-  pointer-events: none;
-}
-.cs-ring-2 { animation-delay: 0.9s; }
-.cs-dot {
-  position: absolute; inset: 0; border-radius: 50%;
-  background: var(--mc);
-  box-shadow: 0 0 10px 2px var(--mc);
-  animation: cs-pulse 3s ease-in-out infinite;
-  transition: transform 0.15s ease;
-}
-.cs-wrap:hover .cs-dot { transform: scale(1.6); }
 .leaflet-control-zoom a {
   background: rgba(15,23,42,0.92) !important;
   border-color: #1e293b !important;
@@ -87,7 +59,6 @@ export function MapSection({ stories, countryStats }: Props) {
 
   const [selectedStory,  setSelectedStory]  = useState<MapStory | null>(null)
   const [viewMode,       setViewMode]        = useState<ViewMode>('points')
-  const [activeCategory, setActiveCategory]  = useState<StoryCategory | 'all'>('all')
   const [isLocating,     setIsLocating]      = useState(false)
   const [mapReady,       setMapReady]        = useState(false)
   const [liveStories,    setLiveStories]     = useState<MapStory[]>(
@@ -104,11 +75,7 @@ export function MapSection({ stories, countryStats }: Props) {
       .catch(() => {})
   }, [stories])
 
-  const filteredStories = activeCategory === 'all'
-    ? liveStories
-    : liveStories.filter(s => s.category === activeCategory)
-
-  // Inject ping CSS once
+  // Inject map chrome CSS once
   useEffect(() => {
     if (document.getElementById('cs-css')) return
     const el = document.createElement('style')
@@ -174,7 +141,7 @@ export function MapSection({ stories, countryStats }: Props) {
     }
   }, [])
 
-  // Place markers whenever stories or filter changes
+  // Place pin markers whenever stories change
   useEffect(() => {
     const L = (window as any).L
     if (!mapReady || !mapRef.current || !clusterRef.current || !L) return
@@ -182,20 +149,9 @@ export function MapSection({ stories, countryStats }: Props) {
     const cluster = clusterRef.current
     cluster.clearLayers()
 
-    filteredStories.forEach((story) => {
-      const color = CATEGORY_COLORS[story.category as StoryCategory] ?? '#0b90e4'
-      const icon = L.divIcon({
-        html: `<div class="cs-wrap" style="--mc:${color}">
-          <div class="cs-ring"></div>
-          <div class="cs-ring cs-ring-2"></div>
-          <div class="cs-dot" style="animation-delay:${(Math.random()*3).toFixed(2)}s"></div>
-        </div>`,
-        className: '',
-        iconSize: [14, 14],
-        iconAnchor: [7, 7],
-      })
-
-      const marker = L.marker([story.latitude, story.longitude], { icon })
+    liveStories.forEach((story) => {
+      // Plain Leaflet pin (default icon, URLs fixed at init).
+      const marker = L.marker([story.latitude, story.longitude])
       marker.on('click', () => {
         setSelectedStory(story)
         mapRef.current.flyTo(
@@ -206,7 +162,7 @@ export function MapSection({ stories, countryStats }: Props) {
       })
       cluster.addLayer(marker)
     })
-  }, [mapReady, filteredStories])
+  }, [mapReady, liveStories])
 
   // Heatmap toggle
   useEffect(() => {
@@ -216,7 +172,7 @@ export function MapSection({ stories, countryStats }: Props) {
 
     if (viewMode === 'heatmap') {
       if (!heatRef.current && L.heatLayer) {
-        const pts = filteredStories.map(s => [s.latitude, s.longitude, 0.6])
+        const pts = liveStories.map(s => [s.latitude, s.longitude, 0.6])
         heatRef.current = L.heatLayer(pts, {
           radius: 28, blur: 18, maxZoom: 10,
           gradient: { 0.2: '#0b90e4', 0.5: '#38bdf8', 0.8: '#7dd3fc', 1.0: '#e0f2fe' },
@@ -233,7 +189,7 @@ export function MapSection({ stories, countryStats }: Props) {
         if (el) { el.style.opacity = '1'; el.style.pointerEvents = 'auto' }
       })
     }
-  }, [viewMode, mapReady, filteredStories])
+  }, [viewMode, mapReady, liveStories])
 
   // Geolocation — same as Geopoly locateMe
   const handleLocate = useCallback(() => {
@@ -268,22 +224,23 @@ export function MapSection({ stories, countryStats }: Props) {
       <div className="absolute bottom-0 left-0 right-0 h-48 pointer-events-none"
         style={{ background: 'linear-gradient(to bottom, transparent, #080e1a)', zIndex: 5 }} />
 
-      {/* Controls */}
-      <div style={{ position: 'relative', zIndex: 10 }}>
+      {/* Controls: the wrapper MUST fill the map. MapControls
+          children anchor to its top/bottom edges; against a
+          height-less relative wrapper the bottom-anchored pieces
+          resolved above the map, over the hero. */}
+      <div style={{ position: 'absolute', inset: 0, zIndex: 10, pointerEvents: 'none' }}>
         <MapControls
           viewMode={viewMode}
-          activeCategory={activeCategory}
           onViewModeChange={setViewMode}
-          onCategoryChange={setActiveCategory}
           onLocate={handleLocate}
           isLocating={isLocating}
-          storyCount={filteredStories.length}
+          storyCount={liveStories.length}
         />
       </div>
 
       {/* Story popup */}
       {selectedStory && (
-        <div style={{ position: 'relative', zIndex: 20 }}>
+        <div style={{ position: 'absolute', inset: 0, zIndex: 20, pointerEvents: 'none' }}>
           <MapPopup story={selectedStory} onClose={() => setSelectedStory(null)} />
         </div>
       )}
