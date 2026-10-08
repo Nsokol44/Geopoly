@@ -41,7 +41,7 @@ export default async function AdminPreview({ params }: { params: Promise<{ id: s
           <div className="bg-zinc-900 border border-yellow-400/20 rounded-2xl p-6 mb-8">
             <p className="text-yellow-400 text-xs font-black uppercase tracking-wider mb-3">🎙 Voice Recording</p>
             <audio controls src={audioUrl} className="w-full mb-3" />
-            <a href={audioUrl} download={`story-${id.slice(0,8)}.webm`}
+            <a href={`${audioUrl}&download=1`} download={`story-${id.slice(0,8)}.webm`}
               className="inline-flex items-center gap-2 bg-zinc-800 hover:bg-zinc-700 border border-zinc-700 text-zinc-200 text-xs font-black px-4 py-2 rounded-xl transition-colors">
               ⬇️ Export Audio for Transcription
             </a>
