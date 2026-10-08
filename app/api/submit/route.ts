@@ -1,24 +1,24 @@
 import { NextResponse } from 'next/server'
 import { createAdminClient } from '@/lib/supabase-server'
+import { insertStory } from '@/lib/story-submit'
 
 export async function POST(req: Request) {
   try {
-    const body = await req.json()
+    const body = await req.json().catch(() => ({}))
     if (!body.title?.trim() || !body.author_name?.trim())
       return NextResponse.json({ error: 'Title and name required' }, { status: 400 })
 
     const db = createAdminClient()
-    const { data, error } = await db.from('stories').insert({
+    const id = await insertStory(db, {
       title: body.title.trim(),
-      body: '[Voice recording — pending transcription]',
+      author_name: body.author_name.trim(),
+      author_email: body.author_email,
       audio_upload_path: body.audio_upload_path ?? null,
       cover_image_url: body.cover_image_url ?? null,
-      author_name: body.author_name.trim(),
-      author_email: body.author_email?.trim().toLowerCase() ?? '',
-      status: 'pending',
-    }).select('id').single()
+    })
 
-    if (error) return NextResponse.json({ error: error.message }, { status: 500 })
-    return NextResponse.json({ id: data.id }, { status: 201 })
-  } catch { return NextResponse.json({ error: 'Internal server error' }, { status: 500 }) }
+    return NextResponse.json({ id }, { status: 201 })
+  } catch (e: any) {
+    return NextResponse.json({ error: e.message ?? 'Internal server error' }, { status: 500 })
+  }
 }
